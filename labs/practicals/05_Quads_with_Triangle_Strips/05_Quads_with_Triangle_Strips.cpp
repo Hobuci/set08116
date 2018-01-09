@@ -12,18 +12,23 @@ target_camera cam;
 bool load_content() {
   // *********************************
   // Set geometry type to triangle strip
-
+	geom.set_type(GL_TRIANGLE_STRIP);
   // *********************************
   // Positions
   vector<vec3> positions{
       // *********************************
       // Add the position data for two triangles here
 
+	  vec3(-1.0f, 0.0f, 0.0f),
+	  vec3(1.0f, 0.0f, 0.0f),
+	  vec3(0.0f, 1.0f, 0.0f),
+	  vec3(0.0f, 2.0f, 0.0f),
+	  vec3(-1.0f, 0.0f, 0.0f)
+
       // *********************************
   };
   // Colours
-  vector<vec4> colours{vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(1.0f, 0.0f, 0.0f, 1.0f),
-                       vec4(1.0f, 0.0f, 0.0f, 1.0f)};
+  vector<vec4> colours{vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(1.0f, 1.0f, 0.0f, 1.0f), vec4(1.0f, 1.0f, 0.0f, 1.0f)};
   // Add to the geometry
   geom.add_buffer(positions, BUFFER_INDEXES::POSITION_BUFFER);
   geom.add_buffer(colours, BUFFER_INDEXES::COLOUR_BUFFER);
@@ -35,7 +40,7 @@ bool load_content() {
   eff.build();
 
   // Set camera properties
-  cam.set_position(vec3(10.0f, 10.0f, 10.0f));
+  cam.set_position(vec3(0.0f, 0.0f, 6.0f));
   cam.set_target(vec3(0.0f, 0.0f, 0.0f));
   auto aspect = static_cast<float>(renderer::get_screen_width()) / static_cast<float>(renderer::get_screen_height());
   cam.set_projection(quarter_pi<float>(), aspect, 2.414f, 1000.0f);
