@@ -8,8 +8,10 @@ using namespace glm;
 geometry geom;
 effect eff;
 target_camera cam;
+float theta = 0.f;
+vec3 pos(0.0f, 0.0f, 0.0f);
 
-const int num_points = 50000;
+const int num_points = 500000;
 
 void create_sierpinski(geometry &geom) {
   vector<vec3> points;
@@ -28,14 +30,16 @@ void create_sierpinski(geometry &geom) {
   for (auto i = 1; i < num_points; ++i) {
     // *********************************
     // Add random point
-
+	  auto k = (points[i - 1] + v[dist(e)]) / 2.f;
+	  points.push_back(k);
     // Add colour - all points red
-
+	  colours.push_back(vec4(1.f, 0.f, 0.f, 1.f));
     // *********************************
   }
   // *********************************
   // Add buffers to geometry
-
+  geom.add_buffer(points, BUFFER_INDEXES::POSITION_BUFFER);
+  geom.add_buffer(colours, BUFFER_INDEXES::COLOUR_BUFFER);
 
   // *********************************
 }
@@ -61,6 +65,21 @@ bool load_content() {
 }
 
 bool update(float delta_time) {
+  // Update the angle - half rotation per second
+  theta += pi<float>() * delta_time;
+  // Check if key is pressed
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_UP)) {
+	  pos += vec3(0.0f, 0.0f, -5.0f) * delta_time;
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_DOWN)) {
+	  pos += vec3(0.0f, 0.0f, 5.0f) * delta_time;
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_LEFT)) {
+	  pos += vec3(-5.0f, 0.0f, 0.0f) * delta_time;
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_RIGHT)) {
+	  pos += vec3(5.0f, 0.0f, 0.0f) * delta_time;
+  }
   // Update the camera
   cam.update(delta_time);
   return true;
@@ -69,8 +88,14 @@ bool update(float delta_time) {
 bool render() {
   // Bind effect
   renderer::bind(eff);
+  //Add rotation and translation
+  mat4 M, R, T;
+  //Rotate
+  R = rotate(mat4(1.f), theta, vec3(0.f, 1.f, 0.f)); //Y axis
+  T = translate(mat4(1.f), pos);
+  //combine - no scaling
+  M = T * R;
   // Create MVP matrix
-  mat4 M(1.0f);
   auto V = cam.get_view();
   auto P = cam.get_projection();
   auto MVP = P * V * M;
