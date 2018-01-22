@@ -6,6 +6,7 @@
 #include <glm\gtx\euler_angles.hpp>
 #include <glm\gtx\projection.hpp>
 #include <iostream>
+#include <glm\gtx\string_cast.hpp>
 
 using namespace std;
 using namespace glm;
@@ -97,7 +98,6 @@ int main()
 	//perform a transformation
 	vec3 R_v = Rall * vec4(v, 1.0f);
 
-
 	//Euler Angle - uses all three axes in one operation
 		//eulerAngleYXZ(YAW, PITCH, ROLL)
 	mat4 R = eulerAngleYXZ(90.0f, 0.0f, 0.0f);
@@ -115,7 +115,7 @@ int main()
 
 	quat q;
 		//vec3 is the axis to rotate around
-	q = rotate(quat(), angle, vec3(1.0f, 0.0f, 0.0f));
+	q = rotate(quat(), angle, vec3(1.f, 0.f, 0.f));
 
 	quat qRx = rotate(quat(), angle, vec3(1.0f, 0.0f, 0.0f));
 	quat qRy = rotate(quat(), angle, vec3(0.0f, 1.0f, 0.0f));
@@ -123,7 +123,10 @@ int main()
 	//combine them
 	quat qR = qRx * qRy * qRz;
 
-	//Convert to Matrix
-	mat4 mR = mat4_cast(q);
+	//this doesnt work properly!!!
+	cout << to_string(q) << endl;
+	cin.get();
 
+	//Convert to Matrix
+	mat4 mQ = mat4_cast(q);
 }
