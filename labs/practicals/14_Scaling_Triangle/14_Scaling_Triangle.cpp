@@ -1,5 +1,6 @@
 #include <glm\glm.hpp>
 #include <graphics_framework.h>
+#include <iostream>
 
 using namespace std;
 using namespace graphics_framework;
@@ -44,6 +45,8 @@ bool update(float delta_time) {
   s *= 5.0f;
   // Update the camera
   cam.update(delta_time);
+  //Display s
+  cout << s << endl;
   return true;
 }
 

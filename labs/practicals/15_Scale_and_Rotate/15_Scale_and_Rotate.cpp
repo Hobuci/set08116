@@ -57,9 +57,10 @@ bool render() {
   // *********************************
   // Create rotation matrix and scale matrix
   // Set M to be the combination of scale and rotation - make sure you have the correct order
-
-
-
+  // T * (R * S)
+  R = rotate(mat4(1.f), theta, vec3(0.f, 0.f, 1.f)); //Z axis
+  S = scale(mat4(1.f), vec3(s, s, s));
+  M = R * S;
   // *********************************
   // Create MVP matrix
   auto V = cam.get_view();

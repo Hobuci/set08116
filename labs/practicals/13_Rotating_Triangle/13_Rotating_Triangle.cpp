@@ -1,5 +1,6 @@
 #include <glm\glm.hpp>
 #include <graphics_framework.h>
+#include <iostream>
 
 using namespace std;
 using namespace graphics_framework;
@@ -39,6 +40,8 @@ bool update(float delta_time) {
   theta += pi<float>() * delta_time;
   // Update the camera
   cam.update(delta_time);
+  //Display theta
+  cout << theta << endl;
   return true;
 }
 
