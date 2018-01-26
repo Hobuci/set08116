@@ -14,18 +14,59 @@ texture tex;
 bool load_content() {
   // Construct geometry object
   geometry geom;
-  // Create triangle data
-  // Positions
-  vector<vec3> positions{vec3(0.0f, 1.0f, 0.0f), vec3(-1.0f, -1.0f, 0.0f), vec3(1.0f, -1.0f, 0.0f)};
-  // *********************************
-  // Define texture coordinates for triangle
+
+//Quad
+//geom.set_type(GL_TRIANGLE_STRIP);
+
+//Triangle Fan
+  geom.set_type(GL_TRIANGLE_FAN);
+
+// Positions
+
+//Triangle
+//  vector<vec3> positions{vec3(0.0f, 1.0f, 0.0f), vec3(-1.0f, -1.0f, 0.0f), vec3(1.0f, -1.0f, 0.0f)};
+
+//Quad
+/*  vector<vec3> positions{
+
+	  vec3(1.0f, 1.0f, 0.0f),
+	  vec3(0.0f, 1.0f, 0.0f),
+	  vec3(1.0f, 0.0f, 0.0f),
+	  vec3(0.0f, 0.0f, 0.0f)
+  };*/
+
+//Triangle Fan
+  vector<vec3> positions{
+
+	  vec3(0.0f,0.0f,0.0f),
+	  vec3(1.0f,2.0f,0.0f),
+	  vec3(-1.0f,2.0f,0.0f),
+	  vec3(-2.0f,1.0f,0.0f),
+	  vec3(-2.0f,-1.0f,0.0f),
+	  vec3(-1.0f,-2.0f,0.0f),
+	  vec3(1.0f,-2.0f,0.0f),
+	  vec3(2.0f,-1.0f,0.0f),
+	  vec3(2.0f,1.0f,0.0f),
+	  vec3(1.0f,2.0f,0.0f)
+
+  };
+
+// Define texture coordinates
+//Triangle
+//  vector<vec2> tex_coords{ vec2(0.5f, 1.0f), vec2(0.0f, 0.0f), vec2(1.0f,0.0f) };
+
+//Quad
+//  vector<vec2> tex_coords{ vec2(1,1), vec2(0,1), vec2(1,0), vec2(0,0) };
+
+//Triangle Fan
+  vector<vec2> tex_coords{ vec2(0.5f,0.5f), vec2(0.65f,0.855f), vec2(0.35f,0.84f), vec2(0.143f,0.637f), vec2(0.143f,0.346f), vec2(0.35f,0.135f), vec2(0.66f,0.135f), vec2(0.873f,0.355f), vec2(0.862f, 0.652f), vec2(0.65f,0.855f) };
 
   // *********************************
   // Add to the geometry
   geom.add_buffer(positions, BUFFER_INDEXES::POSITION_BUFFER);
   // *********************************
   // Add texture coordinate buffer to geometry
-
+  geom.add_buffer(tex_coords, BUFFER_INDEXES::TEXTURE_COORDS_0);
   // *********************************
 
   // Create mesh object
@@ -36,13 +77,13 @@ bool load_content() {
   eff.add_shader("27_Texturing_Shader/simple_texture.frag", GL_FRAGMENT_SHADER);
   // *********************************
   // Build effect
-
+  eff.build();
   // Load texture "textures/sign.jpg"
-
+  tex = texture("textures/sign.jpg");
   // *********************************
 
   // Set camera properties
-  cam.set_position(vec3(10.0f, 10.0f, 10.0f));
+  cam.set_position(vec3(0.0f, 0.0f, 10.0f));
   cam.set_target(vec3(0.0f, 0.0f, 0.0f));
   auto aspect = static_cast<float>(renderer::get_screen_width()) / static_cast<float>(renderer::get_screen_height());
   cam.set_projection(quarter_pi<float>(), aspect, 2.414f, 1000.0f);
@@ -72,9 +113,9 @@ bool render() {
 
   // *********************************
   // Bind texture to renderer
-
+  renderer::bind(tex, 0);
   // Set the texture value for the shader here
-
+  glUniform1i(eff.get_uniform_location("tex"), 0);
   // *********************************
 
   // Render the mesh
