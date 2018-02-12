@@ -51,6 +51,7 @@ bool update(float delta_time) {
   // Update camera
   cam.update(delta_time);
   uv_scroll += vec2(0, delta_time * 0.05);
+
   return true;
 }
 
@@ -72,12 +73,15 @@ bool render() {
 
   // *********************************
   // Set the dissolve_factor uniform value
+  glUniform1f(eff.get_uniform_location("dissolve_factor"), dissolve_factor);
 
   // Bind the two textures - use different index for each
-
+  renderer::bind(tex, 0);
+  renderer::bind(dissolve, 1);
 
   // Set the uniform values for textures - use correct index
-
+  glUniform1i(eff.get_uniform_location("tex"), 0);
+  glUniform1i(eff.get_uniform_location("dissolve"), 1);
 
   // *********************************
 
