@@ -10,7 +10,7 @@ effect eff;
 target_camera cam;
 texture tex;
 
-const int subdivisions = 5;
+const int subdivisions = 7;
 
 void divide_triangle(const vector<vec3> &points, int divisions, vector<vec3> &positions) {
   // do we have more divisions to do?
@@ -43,10 +43,10 @@ bool load_content() {
   divide_triangle({v[0], v[2], v[3]}, subdivisions, positions);
   // Copy positions (already normalized) into normals buffer
   normals.insert(normals.end(), positions.begin(), positions.end());
+
   // Add buffers to geometry
   geom.add_buffer(positions, BUFFER_INDEXES::POSITION_BUFFER);
   geom.add_buffer(normals, BUFFER_INDEXES::NORMAL_BUFFER);
-
   // Create mesh object
   m = mesh(geom);
 
@@ -58,7 +58,7 @@ bool load_content() {
   eff.build();
 
   // Colour scale from red to black
-  vector<vec4> colour_data{vec4(0.12f, 0.0f, 0.0f, 1.0f), vec4(0.25f, 0.0f, 0.0f, 1.0f), vec4(0.5f, 0.0f, 0.0f, 1.0f),
+  vector<vec4> colour_data{vec4(1.25f, 1.25f, 0.0f, 1.0f), vec4(0.0f, 0.25f, 0.0f, 1.0f), vec4(0.0f, 0.0f, 0.5f, 1.0f),
                            vec4(1.0f, 0.0f, 0.0f, 1.0f)};
   // Create 1D 4x1 texture from colour_data
   tex = texture(colour_data, 4, 1, false, false);
@@ -94,9 +94,9 @@ bool render() {
 
   // *********************************
   // Bind texture to renderer
-
+  renderer::bind(tex, 0);
   // Set the texture value for the shader here
-
+  glUniform1i(eff.get_uniform_location("tex"), 0);
   // *********************************
 
   // Render the mesh

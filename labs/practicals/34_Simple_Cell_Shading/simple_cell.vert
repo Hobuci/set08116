@@ -10,7 +10,7 @@ layout (location = 2) in vec3 normal;
 layout (location = 0) out float tex_coord;
 
 // Light direction
-const vec3 light_dir = vec3(0, 0, 1.0);
+const vec3 light_dir = vec3(0, 0, 1);
 
 void main()
 {
