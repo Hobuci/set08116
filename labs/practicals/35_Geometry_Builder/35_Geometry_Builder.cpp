@@ -6,52 +6,66 @@ using namespace graphics_framework;
 using namespace glm;
 
 map<string, mesh> meshes;
+mesh m;
 effect eff;
 texture tex;
 target_camera cam;
 
 bool load_content() {
-  // Create plane mesh
-  meshes["plane"] = mesh(geometry_builder::create_plane());
-
-  // *********************************
   // box
-
+  geometry box = geometry_builder::create_box();
   // Tetrahedron
-
+  geometry tetrahedron = geometry_builder::create_tetrahedron();
   // Pyramid
-
+  geometry pyramid = geometry_builder::create_pyramid();
   // Disk
-
+  geometry disk = geometry_builder::create_disk(20);
   // Cylinder
-
+  geometry cylinder = geometry_builder::create_cylinder(20,20);
   // Sphere
-
+  geometry sphere = geometry_builder::create_sphere(20,20);
   // Torus
+  geometry torus = geometry_builder::create_torus(20,20,1,5);
 
+  // Create scene
+  meshes["plane"] = mesh(geometry_builder::create_plane());
+  meshes["box"] = mesh(box);
+  meshes["tetrahedron"] = mesh(tetrahedron);
+  meshes["disk"] = mesh(disk);
+  meshes["pyramid"] = mesh(pyramid);
+  meshes["cylinder"] = mesh(cylinder);
+  meshes["sphere"] = mesh(sphere);
+  meshes["torus"] = mesh(torus);
 
   // Set the transforms for your meshes here
   // 5x scale, move(-10.0f, 2.5f, -30.0f)
-
+  meshes["box"].get_transform().scale *= vec3(5.0f,5.0f,5.0f);
+  meshes["box"].get_transform().position += vec3(-10.0f, 2.5f, -30.0f);
 
   // 4x scale, move(-30.0f, 10.0f, -10.0f)
-
+  meshes["tetrahedron"].get_transform().scale *= vec3(4.0f, 4.0f, 4.0f);
+  meshes["tetrahedron"].get_transform().position += vec3(-30.0f, 10.0f, -10.0f);
 
   // 5x scale, move(-10.0f, 7.5f, -30.0f)
-
+  meshes["pyramid"].get_transform().scale *= vec3(5.0f, 5.0f, 5.0f);
+  meshes["pyramid"].get_transform().position += vec3(-10.0f, 7.5f, -30.0f);
 
   // scale(3.0f, 1.0f, 3.0f), move(-10.0f, 11.5f, -30.0f), 180 rotate X axis
-
-
+  meshes["disk"].get_transform().scale += vec3(3.0f, 1.0f, 3.0f);
+  meshes["disk"].get_transform().position += vec3(-10.0f, 11.5f, -30.0f);
+  meshes["disk"].get_transform().rotate(vec3(pi<float>() / 2.0f, 0.0f, 0.0f));
 
   // 5x scale, move(-25.0f, 2.5f, -25.0f)
-
+  meshes["cylinder"].get_transform().scale *= vec3(5.0f, 5.0f, 5.0f);
+  meshes["cylinder"].get_transform().position += vec3(-25.0f, 2.5f, -25.0f);
 
   // 2.5x scale, move(-25.0f, 10.0f, -25.0f)
-
+  meshes["sphere"].get_transform().scale *= vec3(2.5f, 2.5f, 2.5f);
+  meshes["sphere"].get_transform().position += vec3(-25.0f, 10.0f, -25.0f);
 
   // 180 rotate X axis, move(-25.0f, 10.0f, -25.0f)
-
+  meshes["torus"].get_transform().position += vec3(-25.0f, 10.0f, -25.0f);
+  meshes["torus"].get_transform().rotate(vec3(pi<float>() / 2.0f, 0.0f, 0.0f));
 
   // *********************************
 
@@ -81,7 +95,7 @@ bool update(float delta_time) {
 bool render() {
   // Render meshes
   for (auto &e : meshes) {
-    auto m = e.second;
+	 m = e.second;
     // Bind effect
     renderer::bind(eff);
     // Create MVP matrix
@@ -94,9 +108,9 @@ bool render() {
 
     // *********************************
     // Bind texture to renderer
-
+	renderer::bind(tex, 0);
     // Set the texture value for the shader here
-
+	glUniform1i(eff.get_uniform_location("tex"), 0);
     // *********************************
     // Render mesh
     renderer::render(m);
