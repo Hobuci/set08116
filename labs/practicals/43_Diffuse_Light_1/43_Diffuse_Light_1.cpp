@@ -33,11 +33,13 @@ bool load_content() {
   meshes["disk"].get_transform().scale = vec3(3.0f, 1.0f, 3.0f);
   meshes["disk"].get_transform().translate(vec3(-10.0f, 11.5f, -30.0f));
   meshes["disk"].get_transform().rotate(vec3(half_pi<float>(), 0.0f, 0.0f));
+  meshes["disk"].get_transform().rotate(vec3(half_pi<float>(), 0.0f, 0.0f));
   meshes["cylinder"].get_transform().scale = vec3(5.0f, 5.0f, 5.0f);
   meshes["cylinder"].get_transform().translate(vec3(-25.0f, 2.5f, -25.0f));
   meshes["sphere"].get_transform().scale = vec3(2.5f, 2.5f, 2.5f);
   meshes["sphere"].get_transform().translate(vec3(-25.0f, 10.0f, -25.0f));
   meshes["torus"].get_transform().translate(vec3(-25.0f, 10.0f, -25.0f));
+  meshes["torus"].get_transform().rotate(vec3(half_pi<float>(), 0.0f, 0.0f));
   meshes["torus"].get_transform().rotate(vec3(half_pi<float>(), 0.0f, 0.0f));
 
   // Load in shaders
@@ -90,14 +92,14 @@ bool render() {
     glUniformMatrix4fv(eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
 
     // *********************************
-    // Set material colour- all objects red
-
-    // Set light colour- (1.0, 1.0, 1.0, 1.0)
-
-    // Set light direction - (1.0, 1.0, -1.0)
-
+	// Set material colour - all objects red
+	glUniform4fv(eff.get_uniform_location("material_colour"), 1, value_ptr(vec4(1.0f, 0.0f, 0.0f, 1.0f)));
+	// Set light colour - (1.0, 1.0, 1.0, 1.0)
+	glUniform4fv(eff.get_uniform_location("light_colour"), 1, value_ptr(vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+	// Set light direction - (1.0, 1.0, -1.0)
+	glUniform3fv(eff.get_uniform_location("light_dir"), 1, value_ptr(vec3(1.0f, 1.0f, -1.0f)));
     // Render mesh
-
+	renderer::render(m);
     // *********************************
   }
 

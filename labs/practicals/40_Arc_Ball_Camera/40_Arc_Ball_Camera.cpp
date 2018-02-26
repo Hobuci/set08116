@@ -3,6 +3,8 @@
 #include <glm\gtx\component_wise.hpp>
 #include <graphics_framework.h>
 
+/*NOT DONE YET*/
+
 using namespace std;
 using namespace graphics_framework;
 using namespace glm;
@@ -17,9 +19,9 @@ double cursor_y = 0.0;
 bool initialise() {
   // *********************************
   // Set input mode - hide the cursor
-
-  // Capture initial mouse position
-
+	glfwSetInputMode(renderer::get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// Capture initial mouse position
+	glfwGetCursorPos(renderer::get_window(), &cursor_x, &cursor_y);
   // *********************************
 
   return true;
