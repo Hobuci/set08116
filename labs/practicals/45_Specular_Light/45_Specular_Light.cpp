@@ -1,3 +1,4 @@
+
 #include <glm\glm.hpp>
 #include <graphics_framework.h>
 
@@ -8,7 +9,19 @@ using namespace glm;
 map<string, mesh> meshes;
 effect eff;
 texture tex;
-target_camera cam;
+free_camera cam;
+double cursor_x = 0.0;
+double cursor_y = 0.0;
+
+bool initialise() {
+	// *********************************
+	// Set input mode - hide the cursor
+	glfwSetInputMode(renderer::get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// Capture initial mouse position
+	glfwGetCursorPos(renderer::get_window(), &cursor_x, &cursor_y);
+	// *********************************
+	return true;
+}
 
 bool load_content() {
   // Create plane mesh
@@ -47,30 +60,76 @@ bool load_content() {
   eff.build();
 
   // Set camera properties
-  cam.set_position(vec3(50.0f, 10.0f, 50.0f));
+  cam.set_position(vec3(-10.0f, 10.0f, -10.0f));
   cam.set_target(vec3(0.0f, 0.0f, 0.0f));
   cam.set_projection(quarter_pi<float>(), renderer::get_screen_aspect(), 0.1f, 1000.0f);
   return true;
 }
 
 bool update(float delta_time) {
-  if (glfwGetKey(renderer::get_window(), '1')) {
-    cam.set_position(vec3(50, 10, 50));
-  }
-  if (glfwGetKey(renderer::get_window(), '2')) {
-    cam.set_position(vec3(-50, 10, 50));
-  }
-  if (glfwGetKey(renderer::get_window(), '3')) {
-    cam.set_position(vec3(-50, 10, -50));
-  }
-  if (glfwGetKey(renderer::get_window(), '4')) {
-    cam.set_position(vec3(50, 10, -50));
-  }
+	// The ratio of pixels to rotation - remember the fov
+	static double ratio_width = quarter_pi<float>() / static_cast<float>(renderer::get_screen_width());
+	static double ratio_height =
+		(quarter_pi<float>() *
+		(static_cast<float>(renderer::get_screen_height()) / static_cast<float>(renderer::get_screen_width()))) /
+		static_cast<float>(renderer::get_screen_height());
+
+	double current_x;
+	double current_y;
+	// *********************************
+	// Get the current cursor position
+	glfwGetCursorPos(renderer::get_window(), &current_x, &current_y);
+	// Calculate delta of cursor positions from last frame
+	double delta_x = current_x - cursor_x;
+	double delta_y = current_y - cursor_y;
+
+	// Multiply deltas by ratios - gets actual change in orientation
+	delta_x *= ratio_width;
+	delta_y *= ratio_height;
+
+	// Rotate cameras by delta
+	cam.rotate(delta_x, -delta_y);
+
+	// Camera translation vectors
+	vec3 forward(.0f, .0f, .0f), backward(.0f, .0f, .0f), left(.0f, .0f, .0f), right(.0f, .0f, .0f), up(.0f, .0f, .0f), down(.0f, .0f, .0f);
+	float speed(10.0f);
+	// Use keyboard to move the camera - WSAD
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_W)) {
+		forward += vec3(.0f, .0f, 1.0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_S)) {
+		backward += vec3(.0f, .0f, -1.0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_A)) {
+		left += vec3(-1.0f, .0f, .0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_D)) {
+		right += vec3(1.0f, .0f, .0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_SPACE)) {
+		up += vec3(.0f, 1.0f, .0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_LEFT_CONTROL)) {
+		down += vec3(.0f, -1.0f, .0f);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_LEFT_SHIFT)) {
+		speed += 20.0f;
+	}
+
+	vec3 camTranslation = forward + backward + left + right + up + down;
+	// Move camera
+	if (camTranslation != vec3(.0f, .0f, .0f)) {
+		cam.move(camTranslation * delta_time * speed);
+	}
 
   // Rotate the sphere
   meshes["sphere"].get_transform().rotate(vec3(0.0f, half_pi<float>(), 0.0f) * delta_time);
+  meshes["torus"].get_transform().rotate(vec3(half_pi<float>(), 0.0f, 0.0f) * delta_time);
 
   cam.update(delta_time);
+
+  // Update cursor pos
+  glfwGetCursorPos(renderer::get_window(), &cursor_x, &cursor_y);
 
   return true;
 }
@@ -90,19 +149,19 @@ bool render() {
     glUniformMatrix4fv(eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
     // *********************************
     // Set M matrix uniform
-
+	glUniformMatrix4fv(eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
     // Set N matrix uniform - remember - 3x3 matrix
-
+	glUniformMatrix3fv(eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
     // Set material colour - specular material is white
-
+	glUniform4fv(eff.get_uniform_location("material_colour"), 1, value_ptr(vec4(1.0f, 1.0f, 1.0f, 1.0f)));
     // Set shininess - Use 50.0f
-
+	glUniform1f(eff.get_uniform_location("shininess"), 25.0f);
     // Set light colour - (1.0, 1.0, 1.0, 1.0)
-
+	glUniform4fv(eff.get_uniform_location("light_colour"), 1, value_ptr(vec4(1.0f, 1.0f, 1.0f, 1.0f)));
     // Set light direction- (1.0, 1.0, -1.0)
-
+	glUniform3fv(eff.get_uniform_location("light_dir"), 1, value_ptr(vec3(1.0f, 1.0f, -1.0f)));
     // Set eye position - Get this from active camera
-
+	glUniform3fv(eff.get_uniform_location("eye_pos"), 1, value_ptr(cam.get_position()));
     // *********************************
     // Render mesh
     renderer::render(m);
@@ -116,6 +175,7 @@ void main() {
   app application("45_Specular_Light");
   // Set load content, update and render methods
   application.set_load_content(load_content);
+  application.set_initialise(initialise);
   application.set_update(update);
   application.set_render(render);
   // Run application
