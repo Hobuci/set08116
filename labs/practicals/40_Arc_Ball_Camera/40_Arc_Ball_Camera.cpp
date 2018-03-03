@@ -3,7 +3,6 @@
 #include <glm\gtx\component_wise.hpp>
 #include <graphics_framework.h>
 
-/*NOT DONE YET*/
 
 using namespace std;
 using namespace graphics_framework;
@@ -82,7 +81,7 @@ bool update(float delta_time) {
 
   // The ratio of pixels to rotation - remember the fov
   static const float sh = static_cast<float>(renderer::get_screen_height());
-  static const float sw = static_cast<float>(renderer::get_screen_height());
+  static const float sw = static_cast<float>(renderer::get_screen_width());
   static const double ratio_width = quarter_pi<float>() / sw;
   static const double ratio_height = (quarter_pi<float>() * (sh / sw)) / sh;
 
@@ -90,50 +89,71 @@ bool update(float delta_time) {
   double current_y;
   // *********************************
   // Get the current cursor position
-
+  glfwGetCursorPos(renderer::get_window(), &current_x, &current_y);
   // Calculate delta of cursor positions from last frame
-
+  double delta_x = current_x - cursor_x;
+  double delta_y = current_y - cursor_y;
 
   // Multiply deltas by ratios and delta_time - gets actual change in orientation
-
+  delta_x *= ratio_width;
+  delta_y *= ratio_height;
 
   // Rotate cameras by delta
   // delta_y - x-axis rotation
   // delta_x - y-axis rotation
+  cam.rotate(-delta_y, -delta_x);
 
   // Use keyboard to move the target_mesh- WSAD
   // Also remember to translate camera
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_W))
+  {
+	  vec3 direction(cam.get_target() - cam.get_position());
+	  vec3 directionN = normalize(vec3(direction.x, 0, direction.z));
 
+	  target_mesh.get_transform().translate(directionN * 0.1f);
+	  cam.translate(directionN * 0.1f);
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_S))
+  {
+	  vec3 direction(cam.get_target() - cam.get_position());
+	  vec3 directionN = normalize(vec3(direction.x, 0, direction.z));
 
+	  target_mesh.get_transform().translate(directionN * -0.1f);
+	  cam.translate(directionN * -0.1f);
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_A))
+  {
+	  vec3 direction(cam.get_target() - cam.get_position());
+	  vec3 directionN = normalize(vec3(direction.x, 0, direction.z));
+	  vec3 sideDir = cross(directionN, cam.get_up());
 
+	  target_mesh.get_transform().translate(sideDir * -0.1f);
+	  cam.translate(sideDir * -0.1f);
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_D))
+  {
+	  vec3 direction(cam.get_target() - cam.get_position());
+	  vec3 directionN = normalize(vec3(direction.x, 0, direction.z));
+	  vec3 sideDir = cross(directionN, cam.get_up());
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	  target_mesh.get_transform().translate(sideDir * 0.1f);
+	  cam.translate(sideDir * 0.1f);
+  }
 
   // Use UP and DOWN to change camera distance
-
-
-
-
-
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_UP))
+  {
+	  cam.set_distance(cam.get_distance() - 0.1);
+  }
+  if (glfwGetKey(renderer::get_window(), GLFW_KEY_DOWN))
+  {
+	  cam.set_distance(cam.get_distance() + 0.1);
+  }
 
   // Update the camera
-
+  cam.update(delta_time);
   // Update cursor pos
-
+  glfwGetCursorPos(renderer::get_window(), &cursor_x, &cursor_y);
 
   // *********************************
   return true;
