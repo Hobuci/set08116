@@ -57,6 +57,7 @@ bool load_content() {
 }
 
 bool update(float delta_time) {
+
   if (glfwGetKey(renderer::get_window(), '1'))
     cam.set_position(vec3(50, 10, 50));
   if (glfwGetKey(renderer::get_window(), '2'))
@@ -68,29 +69,32 @@ bool update(float delta_time) {
 
   // *********************************
   // Update the camera
-
+  cam.update(delta_time);
   // If mouse button pressed get ray and check for intersection
+  if (glfwGetMouseButton(renderer::get_window(), GLFW_MOUSE_BUTTON_1))
+  {
+	  // Create two doubles to store mouse Position X and Y
+	  double mouse_X;
+	  double mouse_Y;
 
-    // Create two doubles to store mouse Position X and Y
+	  // Get the mouse position from glfw, store in to the doubles.
+	  glfwGetCursorPos(renderer::get_window(), &mouse_X, &mouse_Y);
+	  // Crate two vec3 to store Origin and direction of the ray
+	  vec3 origin(mouse_X, mouse_Y, -1.0);
+	  vec3 direction(mouse_X, mouse_Y, 0.0);
 
-
-    // Get the mouse position from glfw, store in to the doubles.
-
-    // Crate two vec3 to store Origin and direction of the ray
-
-
-    // *********************************
-    // Convert mouse position to ray
-    screen_pos_to_world_ray(mouse_X, mouse_Y, renderer::get_screen_width(), renderer::get_screen_height(),
-                            cam.get_view(), cam.get_projection(), origin, direction);
-    // Check all the mehes for intersection
-    for (auto &m : meshes) {
-      float distance = 0.0f;
-      if (test_ray_oobb(origin, direction, m.second.get_minimal(), m.second.get_maximal(),
-                        m.second.get_transform().get_transform_matrix(), distance))
-        cout << m.first << " " << distance << endl;
-    }
-  }//endif
+	  // *********************************
+	  // Convert mouse position to ray
+	  screen_pos_to_world_ray(mouse_X, mouse_Y, renderer::get_screen_width(), renderer::get_screen_height(),
+		  cam.get_view(), cam.get_projection(), origin, direction);
+	  // Check all the mehes for intersection
+	  for (auto &m : meshes) {
+		  float distance = 0.0f;
+		  if (test_ray_oobb(origin, direction, m.second.get_minimal(), m.second.get_maximal(),
+			  m.second.get_transform().get_transform_matrix(), distance))
+			  cout << m.first << " " << distance << endl;
+	  }
+  }
 
   return true;
 }
