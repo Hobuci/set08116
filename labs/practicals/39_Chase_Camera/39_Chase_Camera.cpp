@@ -82,7 +82,7 @@ bool update(float delta_time) {
 
   // The ratio of pixels to rotation - remember the fov
   static const float sh = static_cast<float>(renderer::get_screen_height());
-  static const float sw = static_cast<float>(renderer::get_screen_height());
+  static const float sw = static_cast<float>(renderer::get_screen_width());
   static const double ratio_width = quarter_pi<float>() / sw;
   static const double ratio_height = (quarter_pi<float>() * (sh / sw)) / sh;
 

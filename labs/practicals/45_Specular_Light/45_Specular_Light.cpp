@@ -155,7 +155,7 @@ bool render() {
     // Set material colour - specular material is white
 	glUniform4fv(eff.get_uniform_location("material_colour"), 1, value_ptr(vec4(1.0f, 1.0f, 1.0f, 1.0f)));
     // Set shininess - Use 50.0f
-	glUniform1f(eff.get_uniform_location("shininess"), 25.0f);
+	glUniform1f(eff.get_uniform_location("shininess"), 5.0f);
     // Set light colour - (1.0, 1.0, 1.0, 1.0)
 	glUniform4fv(eff.get_uniform_location("light_colour"), 1, value_ptr(vec4(1.0f, 1.0f, 1.0f, 1.0f)));
     // Set light direction- (1.0, 1.0, -1.0)
