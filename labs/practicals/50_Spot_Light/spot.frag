@@ -45,7 +45,7 @@ void main() {
   // Calculate distance to light
 	float d = distance(light.position, vertex_world_position);
   // Calculate attenuation value
-	float attenuation = 1 / (light.constant + light.linear * d + (light.quadratic * pow(d, 2)));
+	float attenuation = light.constant + light.linear * d + (light.quadratic * pow(d, 2));
   // Calculate spot light intensity
 	float intensity = pow(max(dot(-light.direction, light_dir), 0.0f), light.power);
   // Calculate light colour

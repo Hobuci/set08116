@@ -94,6 +94,8 @@ bool load_content() {
   light.set_range(20.0f);
   // Set power to 1
   light.set_power(1.0f);
+
+  // Load in shaders
   eff.add_shader("50_Spot_Light/spot.vert", GL_VERTEX_SHADER);
   eff.add_shader("50_Spot_Light/spot.frag", GL_FRAGMENT_SHADER);
 
