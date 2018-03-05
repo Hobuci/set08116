@@ -53,7 +53,7 @@ void main() {
 	vec4 diffuse = k * (mat.diffuse_reflection * light_colour);
 
 	// Calculate view direction
-	vec3 view_direction = normalize(eye_pos - vec3(vertex_world_position));
+	vec3 view_direction = normalize(eye_pos - vertex_world_position);
 	// Calculate half vector
 	vec3 H = normalize(light_dir + view_direction);
 	
