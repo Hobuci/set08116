@@ -41,8 +41,8 @@ void main() {
 
   // *********************************
   // Transform tangent
-
+	tangent_out = tangent * N;
   // Transform binormal
-
+	binormal_out = binormal * N;
   // *********************************
 }

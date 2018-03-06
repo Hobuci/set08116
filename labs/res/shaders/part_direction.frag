@@ -1,3 +1,4 @@
+#version 440
 // Directional light structure
 #ifndef DIRECTIONAL_LIGHT
 #define DIRECTIONAL_LIGHT
