@@ -48,41 +48,37 @@ bool load_content() {
   // - all emissive is black
   // - all specular is white
   // - all shininess is 25
+  material mat;
+  mat.set_emissive(vec4(0, 0, 0, 1));
+  mat.set_specular(vec4(1));
+  mat.set_shininess(25.0f);
   // Red box
-
-
-
+  mat.set_diffuse(vec4(1, 0, 0, 1));
+  meshes["box"].set_material(mat);
 
   // Green tetra
-
-
-
+  mat.set_diffuse(vec4(0, 1, 0, 1));
+  meshes["tetra"].set_material(mat);
 
   // Blue pyramid
-
-
-
+  mat.set_diffuse(vec4(0, 0, 1, 1));
+  meshes["pyramid"].set_material(mat);
 
   // Yellow disk
-
-
-
+  mat.set_diffuse(vec4(1, 1, 0, 1));
+  meshes["disk"].set_material(mat);
 
   // Magenta cylinder
-
-
-
+  mat.set_diffuse(vec4(1, 0, 1, 1));
+  meshes["cylinder"].set_material(mat);
 
   // Cyan sphere
-
-
-
+  mat.set_diffuse(vec4(0, 1, 1, 1));
+  meshes["sphere"].set_material(mat);
 
   // White torus
-
-
-
-
+  mat.set_diffuse(vec4(1, 1, 1, 1));
+  meshes["torus"].set_material(mat);
   // *********************************
 
   // Load texture
@@ -92,64 +88,72 @@ bool load_content() {
   // *********************************
   // Point 0, Position (-25, 5, -15)
   // Red, 20 range
-
-
+  points[0].set_position(vec3(-25.0f, 5.0f, -15.0f));
+  points[0].set_light_colour(vec4(1.0f, 0.0f, 0.0f, 1.0f));
+  points[0].set_range(20.0f);
 
   // Point 1, Position (-25, 5, -35)
   // Red,20 range
-
-
+  points[1].set_position(vec3(-25.0f, 5.0f, -35.0f));
+  points[1].set_light_colour(vec4(1.0f, 0.0f, 0.0f, 1.0f));
+  points[1].set_range(20.0f);
 
   // Point 2,Position (-10, 5, -15)
   // Red,20 range
-
-
+  points[2].set_position(vec3(-10.0f, 5.0f, -15.0f));
+  points[2].set_light_colour(vec4(1.0f, 0.0f, 0.0f, 1.0f));
+  points[2].set_range(20.0f);
 
   // Point 3,Position (-10, 5, -35)
   // Red,20 range
-
-
+  points[3].set_position(vec3(-10.0f, 5.0f, -35.0f));
+  points[3].set_light_colour(vec4(1.0f, 0.0f, 0.0f, 1.0f));
+  points[3].set_range(20.0f);
 
   // Spot 0, Position (-25, 10, -15)
   // Green, Direction (1, -1, -1) normalized
   // 20 range,0.5 power
-
-
-
-
+  spots[0].set_position(vec3(-25.0f, 10.0f, -15.0f));
+  spots[0].set_light_colour(vec4(0.0f, 1.0f, 0.0f, 1.0f));
+  spots[0].set_direction(normalize(vec3(1.0f, -1.0f, -1.0f)));
+  spots[0].set_range(20.0f);
+  spots[0].set_power(0.5f);
 
   // Spot 1,Position (-25, 10, -35)
   // Green,Direction (1, -1, 1) normalized
   // 20 range,0.5 power
-
-
-
-
+  spots[1].set_position(vec3(-25.0f, 10.0f, -35.0f));
+  spots[1].set_light_colour(vec4(0.0f, 1.0f, 0.0f, 1.0f));
+  spots[1].set_direction(normalize(vec3(1.0f, -1.0f, -1.0f)));
+  spots[1].set_range(20.0f);
+  spots[1].set_power(0.5f);
 
   // Spot 2,Position (-10, 10, -15)
   // Green,Direction (-1, -1, -1) normalized
   // 20 range,0.5 power
-
-
-
-
+  spots[2].set_position(vec3(-10.0f, 10.0f, -15.0f));
+  spots[2].set_light_colour(vec4(0.0f, 1.0f, 0.0f, 1.0f));
+  spots[2].set_direction(normalize(vec3(-1.0f, -1.0f, -1.0f)));
+  spots[2].set_range(20.0f);
+  spots[2].set_power(0.5f);
 
   // Spot 3,Position (-10, 10, -35)
   // Green,Direction (-1, -1, 1) normalized
   // 20 range,0.5 power
-
-
-
-
+  spots[3].set_position(vec3(-10.0f, 10.0f, -35.0f));
+  spots[3].set_light_colour(vec4(0.0f, 1.0f, 0.0f, 1.0f));
+  spots[3].set_direction(normalize(vec3(-1.0f, -1.0f, -1.0f)));
+  spots[3].set_range(20.0f);
+  spots[3].set_power(0.5f);
 
   // Spot 4,Position (-17.5, 15, -25)
   // Blue,Direction (0, -1, 0)
   // 30 range,1.0 power
-
-
-
-
-
+  spots[4].set_position(vec3(-17.5f, 15.0f, -25.0f));
+  spots[4].set_light_colour(vec4(0.0f, 0.0f, 1.0f, 1.0f));
+  spots[4].set_direction(normalize(vec3(0.0f, -1.0f, 0.0f)));
+  spots[4].set_range(30.0f);
+  spots[4].set_power(1.0f);
   // *********************************
 
   // Load in shaders
@@ -208,23 +212,23 @@ bool render() {
                        value_ptr(MVP));                 // Pointer to matrix data
     // *********************************
     // Set M matrix uniform
-
-    // Set N matrix uniform - remember - 3x3 matrix
-
-    // Bind material
-
-    // Bind point lights
-
-    // Bind spot lights
-
-    // Bind texture
-
+	glUniformMatrix4fv(eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(M));
+	// Set N matrix uniform - remember - 3x3 matrix
+	glUniformMatrix3fv(eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
+	// Bind material
+	renderer::bind(m.get_material(), "mat");
+	// Bind point lights
+	renderer::bind(points, "points");
+	// Bind spot lights
+	renderer::bind(spots, "spots");
+	// Bind texture
+	renderer::bind(tex, 0);
     // Set tex uniform
-
+	glUniform1i(eff.get_uniform_location("tex"), 0);
     // Set eye position- Get this from active camera
-
+	glUniform3fv(eff.get_uniform_location("eye_pos"), 1, value_ptr(cam.get_position()));
     // Render mesh
-
+	renderer::render(m);
     // *********************************
 
     // Render mesh
