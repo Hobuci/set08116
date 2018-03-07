@@ -36,7 +36,8 @@ bool load_content() {
 
   // *********************************
   // Load in skybox effect
-  
+  sky_eff.add_shader("shaders/skybox.vert", GL_VERTEX_SHADER);
+  sky_eff.add_shader("shaders/skybox.frag", GL_FRAGMENT_SHADER);
 
   // Build effect
   sky_eff.build();
@@ -65,7 +66,7 @@ bool render() {
   // Disable depth test,depth mask,face culling
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
-	glCullFace(GL_FRONT);
+	glDisable(GL_CULL_FACE);
   // Bind skybox effect
 	renderer::bind(sky_eff);
   // Calculate MVP for the skybox
@@ -77,13 +78,13 @@ bool render() {
 	glUniformMatrix4fv(sky_eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
   // Set cubemap uniform
 	renderer::bind(cube_map, 0);
-	glUniform1i(sky_eff.get_uniform_location("tex"), 0);
+	glUniform1i(sky_eff.get_uniform_location("cubemapTex"), 0);
   // Render skybox
 	renderer::render(skybox);
   // Enable depth test,depth mask,face culling
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
-	glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
   // *********************************
 
   // Bind effect
