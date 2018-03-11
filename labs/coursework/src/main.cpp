@@ -497,10 +497,10 @@ bool load_content() {
 	spots[3].set_power(1);
 	// Spot 4 - above the whole scene
 	spots[4].set_position(vec3(0, 50, 0));
-	spots[4].set_light_colour(vec4(0.7f, 0.7f, 0.9f, 1.0f));
+	spots[4].set_light_colour(vec4(0.7f, 0.7f, 0.8f, 1.0f));
 	spots[4].set_direction(normalize(vec3(0, -1, 0)));
-	spots[4].set_range(100.0f);
-	spots[4].set_power(0.3f);
+	spots[4].set_range(80.0f);
+	spots[4].set_power(0.25f);
 	// Directional
 	/*
 	light.set_ambient_intensity(vec4(1, 1, 1, 1.0f));
@@ -508,7 +508,7 @@ bool load_content() {
 	light.set_direction(vec3(-1, -1, -1));
 	*/
 	// Sphere to test location of lights
-	//meshes["locationTest"].get_transform().position = vec3(15, 25, 25);
+	//meshes["locationTest"].get_transform().position = spots[4].get_position();
 
 // SHADERS
 	// Load in main shaders
