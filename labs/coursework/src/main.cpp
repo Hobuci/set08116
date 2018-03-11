@@ -4,6 +4,7 @@
 * 40283185
 * Note: Use numbers 1-3 to switch cameras
 		Shadow rendering is ready to go, but for some reason the shadow map turns out to be very strange, therefore it fails.
+		To build: place it in practicals folder and run CMAKE
 */
 #include <glm\glm.hpp>
 #include <graphics_framework.h>
@@ -25,7 +26,6 @@ int activeCamNo = 1;	// Assigned number for active camera
 double cursor_x = 0.0, cursor_y = 0.0;
 float radius = 0.0f; // runtime radius for planets
 float x, z; // planet trajectory
-mat4 planet2_M; // transformation matrix of planet2
 shadow_map shadow;
 #pragma endregion
 
@@ -272,6 +272,7 @@ void movePlanets(float delta_time)
 	meshes["planet3"].get_transform().translate(vec3(0, x * 0.4f, 0)); //add sine wave to Y axes
 	meshes["planet6"].get_transform().translate(vec3(-x * 0.6f, 0, z * 0.6f)); // reverse direction
 	meshes["planet6"].get_transform().rotate(vec3(0, 0, half_pi<float>() * delta_time));
+	meshes["planet7"].get_transform().translate(vec3(x * 0.2f, 0, z * 0.2f)); //add sine wave to all axes
 	spots[1].set_position(meshes["planet2"].get_transform().position);
 	spots[2].set_position(meshes["planet3"].get_transform().position + meshes["planet2"].get_transform().position + vec3(0.5f, 0, -1));
 	spots[3].set_position(meshes["planet6"].get_transform().position);
@@ -307,6 +308,7 @@ bool load_content() {
 	meshes["planet4"] = mesh(geometry_builder::create_sphere(20, 20));
 	meshes["planet5"] = mesh(geometry_builder::create_sphere(20, 20));
 	meshes["planet6"] = mesh(geometry_builder::create_sphere(20, 20));
+	meshes["planet7"] = mesh(geometry_builder::create_sphere(20, 20));
 	// Transform objects
 	meshes["skybox"].get_transform().scale = vec3(500);
 	meshes["grass"].get_transform().scale = vec3(0.6f);
@@ -353,6 +355,8 @@ bool load_content() {
 	meshes["planet5"].get_transform().translate(vec3(0.3f, 2.65f, 0.75f));
 	meshes["planet6"].get_transform().scale = vec3(0.15f);
 	meshes["planet6"].get_transform().translate(vec3(2.5f, 1.2f, 7.5f));
+	meshes["planet7"].get_transform().scale = vec3(0.9f);
+	meshes["planet7"].get_transform().translate(vec3(0, 2, 0));
 
 // LIGHTING
 	// Set materials
@@ -433,12 +437,17 @@ bool load_content() {
 	mat.set_specular(vec4(1));
 	mat.set_shininess(50.0f);
 	meshes["planet6"].set_material(mat);
+	// Planet2
+	mat.set_diffuse(vec4(.1f, .5f, .1f, 1));
+	mat.set_specular(vec4(1));
+	mat.set_shininess(25.0f);
+	meshes["planet7"].set_material(mat);
 	// Statue
 	mat.set_diffuse(vec4(0.3f, 0.25f, 0.2f, 1));
 	mat.set_specular(vec4(0));
 	mat.set_shininess(1);
 	meshes["statue"].set_material(mat);
-
+	
 	// Set lighting values
 	// Point 0 - lamp post 1
 	points[0].set_position(meshes["lampp"].get_transform().position + vec3(2.2f, 6, 0));
@@ -525,8 +534,8 @@ bool load_content() {
 	sky_eff.add_shader("coursework/skybox.frag", GL_FRAGMENT_SHADER);
 	sky_eff.build();
 	// Load in shadow shaders
-	shadow_eff.add_shader("48_Phong_Shading/phong.vert", GL_VERTEX_SHADER);
-	shadow_eff.add_shader("48_Phong_Shading/phong.frag", GL_FRAGMENT_SHADER);
+	shadow_eff.add_shader("coursework/shadow.vert", GL_VERTEX_SHADER);
+	shadow_eff.add_shader("coursework/shadow.frag", GL_FRAGMENT_SHADER);
 	shadow_eff.build();
 
 // TEXTURES
@@ -543,7 +552,8 @@ bool load_content() {
 	textures["hedge"] = texture("coursework/hedge.png"); textures["hedge2"] = textures["hedge"]; textures["hedge3"] = textures["hedge"]; textures["hedge4"] = textures["hedge"];
 	textures["lampp"] = texture("coursework/metal.jpg"); textures["lampp2"] = textures["lampp"];
 	textures["bench"] = texture("coursework/wood.jpg");
-	textures["planet1"] = texture("coursework/planet1.jpg"); textures["planet2"] = textures["planet1"]; textures["planet3"] = textures["planet1"]; textures["planet4"] = textures["planet1"];
+	textures["planet1"] = texture("coursework/planet1.jpg"); textures["planet2"] = textures["planet1"]; textures["planet3"] = textures["planet1"];
+																textures["planet4"] = textures["planet1"]; textures["planet7"] = textures["planet1"];
 	textures["planet5"] = texture("coursework/planet2.jpg"); textures["planet6"] = textures["planet5"];
 	textures["statue"] = texture("coursework/statue_tex.jpg");
 	// Add textures to cubemap
@@ -617,15 +627,16 @@ bool render() {
 		// Get mesh object
 		auto m = e.second;
 		auto MVP = mat4(0);
-
+		
 		// Transformation inheritance
-		if (e.first == "planet2")
-		{// Save planet2's transform matrix
-			planet2_M = m.get_transform().get_transform_matrix();
-		}
+		// Each planet has their own transformation but 3 and 7 inherit from other ones
 		if (e.first == "planet3")
 		{// If planet3 comes, apply planet2's transform
-			MVP = getMVP(m.get_transform().get_transform_matrix() * planet2_M);
+			MVP = getMVP(m.get_transform().get_transform_matrix() * meshes["planet2"].get_transform().get_transform_matrix());
+		}
+		else if (e.first == "planet7")
+		{// If planet7 comes, apply planet2's and planet3's transform
+			MVP = getMVP(m.get_transform().get_transform_matrix() * meshes["planet2"].get_transform().get_transform_matrix() * meshes["planet3"].get_transform().get_transform_matrix());
 		}
 		else 
 		{// Create MVP matrix
