@@ -154,6 +154,13 @@ bool load_content() {
   spots[4].set_direction(normalize(vec3(0.0f, -1.0f, 0.0f)));
   spots[4].set_range(30.0f);
   spots[4].set_power(1.0f);
+
+  // ambient intensity (0.3, 0.3, 0.3)
+  light.set_ambient_intensity(vec4(0.3f, 0.3f, 0.3f, 1.0f));
+  // Light colour white
+  light.set_light_colour(vec4(1, 1, 1, 1));
+  // Light direction (1.0, 1.0, -1.0)
+  light.set_direction(vec3(1, 1, -1));
   // *********************************
 
   // Load in shaders
@@ -217,6 +224,8 @@ bool render() {
 	glUniformMatrix3fv(eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
 	// Bind material
 	renderer::bind(m.get_material(), "mat");
+	// Bind light
+	renderer::bind(light, "light");
 	// Bind point lights
 	renderer::bind(points, "points");
 	// Bind spot lights

@@ -1,12 +1,18 @@
-#version 440
+#version 410
 
-uniform samplerCube cubemapTex;
+// Cubemap texture
+uniform samplerCube cubemap;
 
-layout(location = 0) in vec2 tex_coord;
+// Incoming 3D texture coordinate
+layout (location = 0) in vec3 tex_coord;
 
+// Outgoing colour
 layout (location = 0) out vec4 colour;
 
 void main()
 {
-	colour = texture(cubemapTex, position);
+	// ************************
+	// Sample texture as normal
+	// ************************
+	colour = texture(cubemap, tex_coord);
 }

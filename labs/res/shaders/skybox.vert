@@ -1,19 +1,21 @@
-#version 440
+#version 410
 
-// The transformation matrix
+// MVP transformation matrix
 uniform mat4 MVP;
 
 // Incoming position
 layout (location = 0) in vec3 position;
-layout (location = 10) in vec2 tex_coord_in;
-// Outgoing position
-layout (location = 0) out vec2 tex_coord_out;
+
+// Outgoing 3D texture coordinate
+layout (location = 0) out vec3 tex_coord;
 
 void main()
 {
-	// Transform the position into screen space
+	// Calculate screen space position
 	gl_Position = MVP * vec4(position, 1.0);
-	
-	//output world position of vertex
-		tex_coord_out = tex_coord_in;
+
+	// *******************************
+	// Set outgoing texture coordinate
+	// *******************************
+	tex_coord = position;
 }

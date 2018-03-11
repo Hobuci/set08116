@@ -22,8 +22,8 @@ bool load_content() {
   // Scale box by 100
   skybox.get_transform().scale = vec3(100);
   // Load the cubemap
-  array<string, 6> filenames = { "textures/sahara_ft.jpg", "textures/sahara_bk.jpg", "textures/sahara_up.jpg",
-	  "textures/sahara_dn.jpg", "textures/sahara_rt.jpg", "textures/sahara_lf.jpg" };
+  array<string, 6> filenames = { "textures/skybox/alps_ft.png", "textures/skybox/alps_bk.png", "textures/skybox/alps_up.png",
+	  "textures/skybox/alps_dn.png", "textures/skybox/alps_rt.png", "textures/skybox/alps_lf.png" };
 
   // Create cube_map
   cube_map = cubemap(filenames);
