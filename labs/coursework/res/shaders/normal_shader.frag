@@ -59,7 +59,7 @@ uniform directional_light light;
 // Point lights being used in the scene
 uniform point_light points[7];
 // Spot lights being used in the scene
-uniform spot_light spots[5];
+uniform spot_light spots[6];
 // Material of the object being rendered
 uniform material mat;
 // Position of the eye
@@ -94,14 +94,14 @@ colour = vec4(0.0, 0.0, 0.0, 1.0);
 	// Sample texture
 	vec4 tex_colour = texture(tex, tex_coord);
 	// Calculate shade factor
-	//float shade = calculate_shadow(shadow_map, light_space_pos);
-	
+	float shade = calculate_shadow(shadow_map, light_space_pos);
+
 	// Calculate normal from normal map
 	vec3 normal_map_normal = calculate_normal(normal, tangent, binormal, normal_map, tex_coord);
-	
+
 	// Calculate directional light colour
 	//colour += calculate_direction(light, mat, normal_map_normal, view_dir, tex_colour);
-	
+
 	// Sum point lights
 	for (int i = 0; i < points.length(); i++)
 	{
@@ -113,9 +113,9 @@ colour = vec4(0.0, 0.0, 0.0, 1.0);
 	{
 		colour += calculate_spot(spots[i], mat, position, normal_map_normal, view_dir, tex_colour);
 	}
-	
+
 	// Scale colour by shade
-    //colour *= shade;
-	
+    colour *= shade;
+
 	colour.a = 1.0;
 }

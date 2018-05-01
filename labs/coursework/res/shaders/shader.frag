@@ -58,7 +58,7 @@ uniform directional_light light;
 // Point lights being used in the scene
 uniform point_light points[7];
 // Spot lights being used in the scene
-uniform spot_light spots[5];
+uniform spot_light spots[6];
 // Material of the object being rendered
 uniform material mat;
 // Position of the eye
@@ -67,6 +67,9 @@ uniform vec3 eye_pos;
 uniform sampler2D tex;
 // Shadow map to sample from
 uniform sampler2D shadow_map;
+// Cube map texture
+uniform samplerCube cubemap;
+uniform int calculateReflection;
 
 // Incoming position
 layout(location = 0) in vec3 position;
@@ -76,6 +79,8 @@ layout(location = 1) in vec2 tex_coord;
 layout(location = 2) in vec3 normal;
 // Incoming light space position
 layout(location = 3) in vec4 light_space_pos;
+// Incoming reflected vector
+layout(location = 4) in vec3 reflected_vector;
 
 // Outgoing colour
 layout(location = 0) out vec4 colour;
@@ -87,11 +92,11 @@ colour = vec4(0.0, 0.0, 0.0, 1.0);
 	// Sample texture
 	vec4 tex_colour = texture(tex, tex_coord);
 	// Calculate shade factor
-	//float shade = calculate_shadow(shadow_map, light_space_pos);
-	
+	float shade = calculate_shadow(shadow_map, light_space_pos);
+
 	// Calculate directional light colour
 	//colour += calculate_direction(light, mat, normal, view_dir, tex_colour);
-	
+
 	// Sum point lights
 	for (int i = 0; i < points.length(); i++)
 	{
@@ -103,9 +108,14 @@ colour = vec4(0.0, 0.0, 0.0, 1.0);
 	{
 		colour += calculate_spot(spots[i], mat, position, normal, view_dir, tex_colour);
 	}
-	
+
 	// Scale colour by shade
-    //colour *= shade;
-	
+    colour *= shade;
+
+  if(calculateReflection == 1)
+  {
+    vec4 reflectedColour = texture(cubemap, reflected_vector);
+    colour = mix(colour, reflectedColour, 0.5);
+  }
 	colour.a = 1.0;
 }

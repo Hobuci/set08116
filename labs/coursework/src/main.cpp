@@ -16,7 +16,7 @@ using namespace glm;
 #pragma region Variables
 map<string, mesh> meshes; map<string, texture> textures; map<string, texture> normal_maps;
 //directional_light light; //not used in this project
-vector<point_light> points(7); vector<spot_light> spots(5);
+vector<point_light> points(7); vector<spot_light> spots(6);
 effect eff, sky_eff, normal_eff, shadow_eff;
 cubemap cube_map;
 free_camera cam_free;	//camNo 0
@@ -152,7 +152,7 @@ bool renderSkybox()
 	glUniformMatrix4fv(sky_eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
 	// Set cubemap uniform
 	renderer::bind(cube_map, 0);
-	glUniform1i(sky_eff.get_uniform_location("cubemapTex"), 0);
+	glUniform1i(sky_eff.get_uniform_location("cubemap"), 0);
 
 	// Render skybox
 	renderer::render(meshes["skybox"]);
@@ -164,7 +164,7 @@ bool renderSkybox()
 
 	return true;
 }
-bool renderNormalMap(pair<string, mesh> e, mat4 MVP, mat4 &LightProjectionMat)
+bool renderWithNormalMap(pair<string, mesh> e, mat4 MVP, mat4 LightProjectionMat)
 {
 	// Get mesh object
 	auto m = e.second;
@@ -176,13 +176,6 @@ bool renderNormalMap(pair<string, mesh> e, mat4 MVP, mat4 &LightProjectionMat)
 	glUniformMatrix4fv(normal_eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
 	// Set N matrix uniform
 	glUniformMatrix3fv(normal_eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
-		//SHADOW
-		auto viewMatrix = shadow.get_view();
-		// Multiply together with LightProjectionMat
-		LightProjectionMat *= viewMatrix * m.get_transform().get_transform_matrix();
-		// Set uniform
-		glUniformMatrix4fv(eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
-
 	// Bind material
 	renderer::bind(m.get_material(), "mat");
 	// Bind light
@@ -206,20 +199,27 @@ bool renderNormalMap(pair<string, mesh> e, mat4 MVP, mat4 &LightProjectionMat)
 	// Bind normal_map
 	renderer::bind(normal_maps[e.first], 1);
 	// Set normal_map uniform
-	glUniform1i(eff.get_uniform_location("normal_map"), 1);
+	glUniform1i(normal_eff.get_uniform_location("normal_map"), 1);
 	// Set eye position - Get this from active camera
 	glUniform3fv(normal_eff.get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+
 		//SHADOW
-		// Bind shadow map texture - use texture unit 1
+		// viewmatrix from the shadow map
+		auto viewMatrix = shadow.get_view();
+		// Multiply together with LightProjectionMat
+		LightProjectionMat = LightProjectionMat * viewMatrix * m.get_transform().get_transform_matrix();
+		// Set uniform
+		glUniformMatrix4fv(normal_eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
+		// Bind shadow map texture - use texture unit 2
 		renderer::bind(shadow.buffer->get_depth(), 2);
 		// Set the shadow_map uniform
-		glUniform1i(eff.get_uniform_location("shadow_map"), 2);
+		glUniform1i(normal_eff.get_uniform_location("shadow_map"), 2);
 
 	// Render geometry
 	renderer::render(m);
 	return true;
 }
-bool renderShadows(mat4 &LightProjectionMat)
+bool renderShadowMap(mat4 LightProjectionMat)
 {
 	// Set render target to shadow map
 	renderer::set_render_target(shadow);
@@ -227,9 +227,6 @@ bool renderShadows(mat4 &LightProjectionMat)
 	glClear(GL_DEPTH_BUFFER_BIT);
 	// Set face cull mode to front
 	glCullFace(GL_FRONT);
-
-	// Proj Mat with a field of view of 90.
-	LightProjectionMat = perspective<float>(90.f, renderer::get_screen_aspect(), 0.1f, 1000.f);
 
 	// Bind shader
 	renderer::bind(shadow_eff);
@@ -290,7 +287,7 @@ bool load_content() {
 	// Create meshes
 	meshes["skybox"] = mesh(geometry_builder::create_box());
 	meshes["grass"] = mesh(geometry_builder::create_plane());
-	meshes["statue"] = mesh(geometry("coursework/statue.obj"));
+	//meshes["statue"] = mesh(geometry("coursework/statue.obj"));
 	meshes["gate"] = mesh(geometry("coursework/gate.obj"));
 	meshes["gate2"] = meshes["gate"];
 	meshes["water"] = mesh(geometry_builder::create_disk(10));
@@ -312,8 +309,8 @@ bool load_content() {
 	// Transform objects
 	meshes["skybox"].get_transform().scale = vec3(500);
 	meshes["grass"].get_transform().scale = vec3(0.6f);
-	meshes["statue"].get_transform().scale = vec3(0.5f);
-	meshes["statue"].get_transform().translate(vec3(0.0f, 3.0f, 0.0f));
+	//meshes["statue"].get_transform().scale = vec3(0.5f);
+	//meshes["statue"].get_transform().translate(vec3(0.0f, 3.0f, 0.0f));
 	meshes["gate"].get_transform().scale = vec3(0.02f);
 	meshes["gate"].get_transform().translate(vec3(-12, 2, -5));
 	meshes["gate2"].get_transform().scale = vec3(0.02f);
@@ -446,7 +443,7 @@ bool load_content() {
 	mat.set_diffuse(vec4(0.3f, 0.25f, 0.2f, 1));
 	mat.set_specular(vec4(0));
 	mat.set_shininess(1);
-	meshes["statue"].set_material(mat);
+	//meshes["statue"].set_material(mat);
 	
 	// Set lighting values
 	// Point 0 - lamp post 1
@@ -501,6 +498,14 @@ bool load_content() {
 	spots[4].set_direction(normalize(vec3(0, -1, 0)));
 	spots[4].set_range(80.0f);
 	spots[4].set_power(0.25f);
+
+	// Spot 5 - SHADOW TEST
+	spots[5].set_position(vec3(0, 3, 15));
+	spots[5].set_light_colour(vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	spots[5].set_direction(normalize(vec3(0, 0, 1)));
+	spots[5].set_range(11.0f);
+	spots[5].set_power(10.1f); //////// RAISE THIS
+
 	// Directional
 	/*
 	light.set_ambient_intensity(vec4(1, 1, 1, 1.0f));
@@ -508,7 +513,7 @@ bool load_content() {
 	light.set_direction(vec3(-1, -1, -1));
 	*/
 	// Sphere to test location of lights
-	//meshes["locationTest"].get_transform().position = spots[4].get_position();
+	//meshes["locationTest"].get_transform().position = spots[5].get_position() + vec3(0, 0, -2);
 
 // SHADERS
 	// Load in main shaders
@@ -543,7 +548,7 @@ bool load_content() {
 	array<string, 6> skybox_tex = { "coursework/miramar_ft.png", "coursework/miramar_bk.png", "coursework/miramar_up.png",
 									"coursework/miramar_dn.png", "coursework/miramar_rt.png", "coursework/miramar_lf.png" };
 	normal_maps["gate"] = texture("coursework/gate_normal.png"); normal_maps["gate2"] = normal_maps["gate"];
-	normal_maps["statue"] = texture("coursework/statue_normal.jpg");
+	//normal_maps["statue"] = texture("coursework/statue_normal.jpg");
 	textures["unTextured"] = texture("coursework/checked.gif");
 	textures["grass"] = texture("coursework/grassHD.jpg");
 	textures["water"] = texture("coursework/water.jpg");
@@ -555,7 +560,7 @@ bool load_content() {
 	textures["planet1"] = texture("coursework/planet1.jpg"); textures["planet2"] = textures["planet1"]; textures["planet3"] = textures["planet1"];
 																textures["planet4"] = textures["planet1"]; textures["planet7"] = textures["planet1"];
 	textures["planet5"] = texture("coursework/planet2.jpg"); textures["planet6"] = textures["planet5"];
-	textures["statue"] = texture("coursework/statue_tex.jpg");
+	//textures["statue"] = texture("coursework/statue_tex.jpg");
 	// Add textures to cubemap
 	cube_map = cubemap(skybox_tex);
 // CAMERAS
@@ -587,6 +592,26 @@ bool update(float delta_time) {
 		glfwSetInputMode(renderer::get_window(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_LEFT)) {
+		spots[5].move(vec3(2, 0, 0) * delta_time);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_RIGHT)) {
+		spots[5].move(vec3(-2, 0, 0) * delta_time);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_UP)) {
+		spots[5].move(vec3(0, 0, -2) * delta_time);
+	}
+	if (glfwGetKey(renderer::get_window(), GLFW_KEY_DOWN)) {
+		spots[5].move(vec3(0, 0, 2) * delta_time);
+	}
+
+	shadow.light_position = spots[5].get_position();
+	shadow.light_dir = spots[5].get_direction();
+
+	if (glfwGetKey(renderer::get_window(), 'I') == GLFW_PRESS)
+		shadow.buffer->save("test.png");
+
+
 	// Update active camera
 	switch (activeCamNo)
 	{
@@ -607,25 +632,22 @@ bool update(float delta_time) {
 
 	movePlanets(delta_time);
 
-	//shadow.light_position = vec3(15, 25, 25);
-	//shadow.light_dir = vec3(-1, -1, 1);
-
-	if (glfwGetKey(renderer::get_window(), 'I') == GLFW_PRESS)
-		shadow.buffer->save("test.png");
-
 	return true;
 }
 bool render() {
 // SKYBOX
 	renderSkybox();
 // SHADOW
-	mat4 LightProjectionMat = mat4(0);
-	renderShadows(LightProjectionMat);
+	// Create light proj mat with fov 90
+	mat4 LightProjectionMat = perspective<float>(90.f, renderer::get_screen_aspect(), 0.1f, 1000.f);
+	renderShadowMap(LightProjectionMat);
+
 // MESHES
 	for (auto &e : meshes) 
 	{
 		// Get mesh object
 		auto m = e.second;
+		int calculateReflection = 0;
 		auto MVP = mat4(0);
 		
 		// Transformation inheritance
@@ -642,9 +664,11 @@ bool render() {
 		{// Create MVP matrix
 			MVP = getMVP(m.get_transform().get_transform_matrix());
 		}
+
+		
 		if (normal_maps.count(e.first) == 1)
 		{//if the mesh has a normal map, render it
-			renderNormalMap(e, MVP, LightProjectionMat);
+			renderWithNormalMap(e, MVP, LightProjectionMat);
 		}
 		else
 		{//render without normal map
@@ -656,14 +680,6 @@ bool render() {
 			glUniformMatrix4fv(eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
 			// Set N matrix uniform
 			glUniformMatrix3fv(eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
-				//SHADOW
-				// viewmatrix from the shadow map
-				auto viewMatrix = shadow.get_view();
-				// Multiply together with LightProjectionMat
-				LightProjectionMat *= viewMatrix * m.get_transform().get_transform_matrix();
-				// Set uniform
-				glUniformMatrix4fv(eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
-
 			// Bind material
 			renderer::bind(m.get_material(), "mat");
 			// Bind light
@@ -686,11 +702,28 @@ bool render() {
 			glUniform1i(eff.get_uniform_location("tex"), 0);
 			// Set eye position - Get this from active camera
 			glUniform3fv(eff.get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+
+			glUniform1i(eff.get_uniform_location("calculateReflection"), calculateReflection);
+
 				//SHADOW
+				// viewmatrix from the shadow map
+				auto viewMatrix = shadow.get_view();
+				// Multiply together with LightProjectionMat
+				LightProjectionMat = LightProjectionMat * viewMatrix * m.get_transform().get_transform_matrix();
+				// Set uniform
+				glUniformMatrix4fv(eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
 				// Bind shadow map texture - use texture unit 1
 				renderer::bind(shadow.buffer->get_depth(), 1);
 				// Set the shadow_map uniform
 				glUniform1i(eff.get_uniform_location("shadow_map"), 1);
+
+				if (e.first == "water") {
+					calculateReflection = 1;
+					//REFLECTION
+					renderer::bind(cube_map, 2);
+					glUniform1i(eff.get_uniform_location("cubemap"), 2);
+					glUniform1i(eff.get_uniform_location("calculateReflection"), calculateReflection);
+				}
 
 			// Render geometry
 			renderer::render(m);

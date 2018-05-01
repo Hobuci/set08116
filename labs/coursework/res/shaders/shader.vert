@@ -8,6 +8,8 @@ uniform mat4 MVP;
 uniform mat3 N;
 // The light transformation matrix
 uniform mat4 lightMVP;
+// Eye pos
+uniform vec3 eye_pos;
 
 // Incoming position
 layout (location = 0) in vec3 position;
@@ -24,17 +26,23 @@ layout (location = 1) out vec2 tex_coord_out;
 layout (location = 2) out vec3 transformed_normal;
 // Outgoing position in light space
 layout (location = 3) out vec4 vertex_light;
+// Outgoing reflection vector
+layout (location = 4) out vec3 reflected_vector;
 
 void main()
 {
 	// Calculate screen position
 	gl_Position = MVP * vec4(position, 1.0);
 
-// Output other values to fragment shader
+	// Output other values to fragment shader
 	// Output world position of vertex
 	vertex_position = vec3(M * vec4(position, 1.0f)).xyz;
 	tex_coord_out = tex_coord_in;
 	transformed_normal = N * normal;
+	// Reflection
+	vec3 viewVector = normalize((MVP * vec4(position, 1.0)).xyz - eye_pos);
+	vec3 unitNormal = normalize(normal);
+	reflected_vector = reflect(viewVector, unitNormal);
 	// Transform position into light space
 	vertex_light = lightMVP * vec4(position, 1.0);
 }
