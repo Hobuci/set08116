@@ -3,7 +3,7 @@
 * 3D scene - The Garden
 * 40283185
 * Note: Use ARROW KEYS to navigate menu
-		
+
 		To build: use CMAKE
 */
 #include <glm\glm.hpp>
@@ -32,7 +32,7 @@ using namespace glm;
 	double cursor_x = 0.0, cursor_y = 0.0;
 //Planets
 	float seed = 0.0f;	// variable that keeps increasing during runtime so that sin and cos waves can use it
-	float x, z, y;		// planet trajectory // y for spotlight outside 
+	float x, z, y;		// planet trajectory // y for spotlight outside
 // PostProcess
 	PostProcess PP;
 	geometry screen, menu_geom;
@@ -530,7 +530,7 @@ bool load_content() {
 	// Create meshes
 	meshes["skybox"] = mesh(geometry_builder::create_box());
 	meshes["grass"] = mesh(geometry_builder::create_plane());
-	//meshes["statue"] = mesh(geometry("the_garden/statue.obj"));
+	meshes["statue"] = mesh(geometry("the_garden/statue.obj"));
 	meshes["gate"] = mesh(geometry("the_garden/gate.obj"));
 	meshes["gate2"] = meshes["gate"];
 	meshes["water"] = mesh(geometry_builder::create_disk(10));
@@ -553,8 +553,8 @@ bool load_content() {
 	// Transform objects
 	meshes["skybox"].get_transform().scale = vec3(500);
 	meshes["grass"].get_transform().scale = vec3(0.6f);
-	//meshes["statue"].get_transform().scale = vec3(0.5f);
-	//meshes["statue"].get_transform().translate(vec3(0.0f, 3.0f, 0.0f));
+	meshes["statue"].get_transform().scale = vec3(0.5f);
+	meshes["statue"].get_transform().translate(vec3(0.0f, 3.0f, 0.0f));
 	meshes["gate"].get_transform().scale = vec3(0.02f);
 	meshes["gate"].get_transform().translate(vec3(-12, 2, -5));
 	meshes["gate2"].get_transform().scale = vec3(0.02f);
@@ -705,8 +705,8 @@ bool load_content() {
 	mat.set_diffuse(vec4(0.1f, 0.1f, 0.1f, 1));
 	mat.set_specular(vec4(0));
 	mat.set_shininess(5);
-	//meshes["statue"].set_material(mat);
-	
+	meshes["statue"].set_material(mat);
+
 	// Set lighting values
 	// Point 0 - lamp post 1
 	points[0].set_position(meshes["lampp"].get_transform().position + vec3(2.2f, 6, 0));
@@ -766,12 +766,12 @@ bool load_content() {
 	light.set_ambient_intensity(vec4(0.1f, 0.1f, 0.1f, 1));
 	light.set_light_colour(vec4(0.1f, 0.1f, 0.2f, 1));
 	light.set_direction(vec3(1.0f, -1.0f, 1.0f));
-	
+
 	// Sphere to test location of lights
 	//meshes["locationTest"].get_transform().position = spots[4].get_position() + vec3(-1, 0, 0);
 
 // SHADERS
-	// Load in main shaders 
+	// Load in main shaders
 	effects["main_eff"].add_shader("the_garden/main_shader.vert", GL_VERTEX_SHADER);
 	vector<string> fragment_shaders{"the_garden/main_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
 	effects["main_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
@@ -781,12 +781,12 @@ bool load_content() {
 	fragment_shaders = { "the_garden/normal_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag", "the_garden/part_normal.frag" };
 	effects["normal_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
 	effects["normal_eff"].build();
-	// Load in fresnel shaders 
+	// Load in fresnel shaders
 	effects["fresnel_eff"].add_shader("the_garden/fresnel_shader.vert", GL_VERTEX_SHADER);
 	fragment_shaders = { "the_garden/fresnel_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
 	effects["fresnel_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
 	effects["fresnel_eff"].build();
-	// Load in reflection shaders 
+	// Load in reflection shaders
 	effects["reflection_eff"].add_shader("the_garden/reflection_shader.vert", GL_VERTEX_SHADER);
 	fragment_shaders = { "the_garden/reflection_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
 	effects["reflection_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
@@ -818,8 +818,8 @@ bool load_content() {
 	array<string, 6> skybox_tex = { "the_garden/miramar_ft.png", "the_garden/miramar_bk.png", "the_garden/miramar_up.png", "the_garden/miramar_dn.png", "the_garden/miramar_rt.png", "the_garden/miramar_lf.png" };
 	array<string, 6> skybox2_tex = { "the_garden/miramar_ft.png", "the_garden/miramar_bk.png", "the_garden/miramar_up.png", "the_garden/miramar_rt.png", "the_garden/miramar_rt.png", "the_garden/miramar_lf.png" };
 	normal_maps["gate"] = texture("the_garden/gate_normal.png"); normal_maps["gate2"] = normal_maps["gate"];
-	//normal_maps["statue"] = texture("the_garden/statue_normal.jpg");
-	//textures["statue"] = texture("the_garden/statue_tex.jpg");
+	normal_maps["statue"] = texture("the_garden/statue_normal.jpg");
+	textures["statue"] = texture("the_garden/statue_tex.jpg");
 	textures["unTextured"] = texture("the_garden/checked.gif");
 	textures["grass"] = texture("the_garden/grassHD.jpg");
 	textures["water"] = texture("the_garden/water.jpg");
