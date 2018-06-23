@@ -59,17 +59,17 @@ uniform directional_light light;
 // Point lights being used in the scene
 uniform point_light points[7];
 // Spot lights being used in the scene
-uniform spot_light spots[6];
+uniform spot_light spots[5];
 // Material of the object being rendered
 uniform material mat;
 // Position of the eye
 uniform vec3 eye_pos;
 // Texture to sample from
 uniform sampler2D tex;
-// Normal map to sample from
-uniform sampler2D normal_map;
 // Shadow map to sample from
-uniform sampler2D shadow_map;
+uniform sampler2D shadowMap;
+// Normal map to sample from
+uniform sampler2D normalMap;
 
 // Incoming position
 layout(location = 0) in vec3 position;
@@ -77,12 +77,12 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 tex_coord;
 // Incoming normal
 layout(location = 2) in vec3 normal;
-// Incoming tangent
-layout(location = 3) in vec3 tangent;
-// Incoming binormal
-layout(location = 4) in vec3 binormal;
 // Incoming light space position
-layout(location = 5) in vec4 light_space_pos;
+layout(location = 3) in vec4 light_space_pos;
+// Incoming tangent
+layout(location = 6) in vec3 tangent;
+// Incoming binormal
+layout(location = 7) in vec3 binormal;
 
 // Outgoing colour
 layout(location = 0) out vec4 colour;
@@ -93,29 +93,27 @@ colour = vec4(0.0, 0.0, 0.0, 1.0);
 	vec3 view_dir = normalize(eye_pos - position);
 	// Sample texture
 	vec4 tex_colour = texture(tex, tex_coord);
-	// Calculate shade factor
-	float shade = calculate_shadow(shadow_map, light_space_pos);
 
-	// Calculate normal from normal map
-	vec3 normal_map_normal = calculate_normal(normal, tangent, binormal, normal_map, tex_coord);
-
-	// Calculate directional light colour
-	//colour += calculate_direction(light, mat, normal_map_normal, view_dir, tex_colour);
-
-	// Sum point lights
+  // Optional normal map
+  vec3 newNormal = calculate_normal(normal, tangent, binormal, normalMap, tex_coord);
+  // Calculate directional light
+	colour += calculate_direction(light, mat, newNormal, view_dir, tex_colour);
+	// Calculate point lights
 	for (int i = 0; i < points.length(); i++)
 	{
-		colour += calculate_point(points[i], mat, position, normal_map_normal, view_dir, tex_colour);
+		colour += calculate_point(points[i], mat, position, newNormal, view_dir, tex_colour);
 	}
-
-	// Sum spot lights
+	// Calculate spot lights
 	for (int i = 0; i < spots.length(); i++)
 	{
-		colour += calculate_spot(spots[i], mat, position, normal_map_normal, view_dir, tex_colour);
+    if(i == 4){// If spotlight 4 -> add shade
+      // Calculate shade factor
+      float shade = calculate_shadow(shadowMap, light_space_pos);
+      // Scale colour by shade
+      colour *= shade;
+    }
+    colour += calculate_spot(spots[i], mat, position, normal, view_dir, tex_colour);
 	}
 
-	// Scale colour by shade
-    colour *= shade;
-
-	colour.a = 1.0;
+	colour.a = 1.0f;
 }

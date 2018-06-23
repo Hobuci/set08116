@@ -1,5 +1,3 @@
-#version 440
-
 // Point light information
 #ifndef POINT_LIGHT
 #define POINT_LIGHT
@@ -45,6 +43,6 @@ vec4 calculate_point(in point_light point, in material mat, in vec3 position, in
 	vec4 primary = mat.emissive + diffuse;
 	vec4 colour = primary * tex_colour + specular;
 	colour.a = 1.0;
-	
+
 	return colour;
 }

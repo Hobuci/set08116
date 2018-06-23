@@ -8,6 +8,8 @@ uniform mat4 MVP;
 uniform mat3 N;
 // The light transformation matrix
 uniform mat4 lightMVP;
+// Eye pos
+uniform vec3 eye_pos;
 
 // Incoming position
 layout (location = 0) in vec3 position;
@@ -26,12 +28,12 @@ layout (location = 0) out vec3 vertex_position;
 layout (location = 1) out vec2 tex_coord_out;
 // Outgoing transformed normal
 layout (location = 2) out vec3 transformed_normal;
-// Outgoing tangent
-layout(location = 3) out vec3 tangent_out;
-// Outgoing binormal
-layout(location = 4) out vec3 binormal_out;
 // Outgoing position in light space
-layout (location = 5) out vec4 vertex_light;
+layout (location = 3) out vec4 vertex_light;
+// Outgoing tangent
+layout(location = 6) out vec3 tangent_out;
+// Outgoing binormal
+layout(location = 7) out vec3 binormal_out;
 
 void main()
 {
@@ -40,13 +42,11 @@ void main()
 
 	// Output other values to fragment shader
 	// Output world position of vertex
-	vertex_position = vec3(M * vec4(position, 1.0f)).xyz;
+	vertex_position = (M * vec4(position, 1.0f)).xyz;
 	tex_coord_out = tex_coord_in;
 	transformed_normal = N * normal;
-	// Transform tangent
-    tangent_out = N * tangent;
-	// Transform binormal
-    binormal_out = N * binormal;
 	// Transform position into light space
-	vertex_light = lightMVP * vec4(position, 1.0);
+	vertex_light = lightMVP * vec4(position, 1.0f);
+	tangent_out = N * tangent;
+	binormal_out = N * binormal;
 }

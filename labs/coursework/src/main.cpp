@@ -1,32 +1,44 @@
 /*
 * Author: Richard Borbely
-* 3D scene
+* 3D scene - The Garden
 * 40283185
-* Note: Use numbers 1-3 to switch cameras
-		Shadow rendering is ready to go, but for some reason the shadow map turns out to be very strange, therefore it fails.
-		To build: place it in practicals folder and run CMAKE
+* Note: Use ARROW KEYS to navigate menu
+		
+		To build: use CMAKE
 */
 #include <glm\glm.hpp>
 #include <graphics_framework.h>
 #include <glm/ext.hpp>
+#include "rendertype.h"
+#include "postprocess.h"
 using namespace std;
 using namespace graphics_framework;
 using namespace glm;
 
 #pragma region Variables
-map<string, mesh> meshes; map<string, texture> textures; map<string, texture> normal_maps;
-//directional_light light; //not used in this project
-vector<point_light> points(7); vector<spot_light> spots(6);
-effect eff, sky_eff, normal_eff, shadow_eff;
-cubemap cube_map;
-free_camera cam_free;	//camNo 0
-target_camera cam_target_1;	//camNo 1
-target_camera cam_target_2;	//camNo 2
-int activeCamNo = 1;	// Assigned number for active camera
-double cursor_x = 0.0, cursor_y = 0.0;
-float radius = 0.0f; // runtime radius for planets
-float x, z; // planet trajectory
-shadow_map shadow;
+//Render types
+	map<string, RenderType> RenderTypes;	// Map that stores the RenderType and effects for meshes
+//Scene
+	map<string, mesh> meshes; map<string, texture> textures, normal_maps; map<string, effect> effects;
+	directional_light light;
+	shadow_map shadow;
+	vector<point_light> points(7); vector<spot_light> spots(5);
+	cubemap cube_map, cube_map2;
+	frame_buffer scene;			// scene frame buffer
+	free_camera cam_free;		// camNo 0
+	target_camera cam_target_1;	// camNo 1
+	target_camera cam_target_2;	// camNo 2
+	int activeCamNo = 1;		// Assigned number for active camera
+	double cursor_x = 0.0, cursor_y = 0.0;
+//Planets
+	float seed = 0.0f;	// variable that keeps increasing during runtime so that sin and cos waves can use it
+	float x, z, y;		// planet trajectory // y for spotlight outside 
+// PostProcess
+	PostProcess PP;
+	geometry screen, menu_geom;
+	map<int, texture> menu_tex;
+	bool renderMenu = true;
+	float frameTime = 0.0f; // for noise, add delta time each update
 #pragma endregion
 
 #pragma region Additional functions
@@ -135,24 +147,131 @@ vec3 getEyePos()
 		break;
 	}
 }
+void movePlanets(float delta_time)
+{
+	meshes["planet1"].get_transform().rotate(vec3(0, quarter_pi<float>() * delta_time / 2, 0));
+	seed += 0.03f; // this affects the radius (very sensitive)
+	x = sinf(seed) / 10; // division affects the speed
+	z = cosf(seed) / 10;
+
+	meshes["planet2"].get_transform().translate(vec3(x, 0, z));
+	meshes["planet2"].get_transform().rotate(vec3(0, 0, quarter_pi<float>() * delta_time));
+	meshes["planet3"].get_transform().translate(vec3(0, x * 0.4f, 0)); //add sine wave to Y axes
+	meshes["planet6"].get_transform().translate(vec3(-x * 0.6f, 0, z * 0.6f)); // reverse direction
+	meshes["planet6"].get_transform().rotate(vec3(0, 0, half_pi<float>() * delta_time));
+	meshes["planet7"].get_transform().translate(vec3(x * 0.2f, 0, z * 0.2f)); //add sine wave to all axes
+	spots[1].set_position(meshes["planet2"].get_transform().position);
+	spots[2].set_position(meshes["planet3"].get_transform().position + meshes["planet2"].get_transform().position + vec3(0.5f, 0, -1));
+	spots[3].set_position(meshes["planet6"].get_transform().position);
+}
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{// Menu Functionality
+	float CAscale = 0.001f; // ChromaticAbberation scale
+	float scale = 0.03f;	// Standard scale for other effects
+
+	// Handle press and hold functionality as well
+	// PRESS FUNCTIONALITY
+	if (action == GLFW_PRESS) {
+		switch (key)
+		{
+		case GLFW_KEY_M:
+			if (renderMenu) {
+				renderMenu = false;
+				cout << "Menu Closed." << endl;
+			}
+			else
+			{
+				renderMenu = true;
+				cout << "Menu Open." << endl;
+			}
+			break;
+
+		case GLFW_KEY_R:
+			PP.setDefaultValues();
+			break;
+		}
+
+		if (renderMenu) {
+
+			switch (key)
+			{
+				case GLFW_KEY_UP:
+					if (PP.getActiveMenuItem() > 0) { PP.setActiveMenuItem(PP.getActiveMenuItem() - 1); } break; // go up on the menu list items
+				case GLFW_KEY_DOWN:
+					if (PP.getActiveMenuItem() < 5) { PP.setActiveMenuItem(PP.getActiveMenuItem() + 1); } break;// go down on the menu list items
+				case GLFW_KEY_LEFT:
+					switch (PP.getActiveMenuItem()) // DECREASE EFFECT
+					{// depending on the value, set different constraints
+						case 0: if (PP.getBrightness() > -1.0f) { PP.setBrightness(PP.getBrightness() - scale); } break; //brightness MIN value
+						case 1: if (PP.getSaturation() > 0.0f) { PP.setSaturation(PP.getSaturation() - scale); } break; //saturation MIN value
+						case 2: if (PP.getChromaticAbberation() > 0.0f) { PP.setChromaticAbberation(PP.getChromaticAbberation() - CAscale); } break; //chromatic abberation MIN value
+						case 3: PP.setSepia(0.0f); break; // Sepia OFF
+						case 4: if (PP.getFilmgrain() > 0.0f) { PP.setFilmgrain(PP.getFilmgrain() - scale * 5); } break; //filmgrain MIN value
+					}
+					cout << "Br: " + to_string(PP.getBrightness()) + " Sat: " + to_string(PP.getSaturation()) + " CA: " + to_string(PP.getChromaticAbberation()) + " Sep: " + to_string(PP.getSepia()) + " FG: " + to_string(PP.getFilmgrain()) << endl;
+					break;
+				case GLFW_KEY_RIGHT:
+					switch (PP.getActiveMenuItem()) // INCREASE EFFECT
+					{// depending on the value, set different constraints
+						case 0: if (PP.getBrightness() < 1.0f) { PP.setBrightness(PP.getBrightness() + scale); } break; //brightness MAX value
+						case 1: if (PP.getSaturation() < 3.0f) { PP.setSaturation(PP.getSaturation() + scale); } break; //saturation MAX value
+						case 2: if (PP.getChromaticAbberation() < 0.004f) { PP.setChromaticAbberation(PP.getChromaticAbberation() + CAscale); } break; //chromatic abberation MAX value
+						case 3: PP.setSepia(1.0f); break; // Sepia ON
+						case 4: if (PP.getFilmgrain() < 8.0f) { PP.setFilmgrain(PP.getFilmgrain() + scale * 5); } break; //filmgrain MAX value
+					}
+					cout << "Br: " + to_string(PP.getBrightness()) + " Sat: " + to_string(PP.getSaturation()) + " CA: " + to_string(PP.getChromaticAbberation()) + " Sep: " + to_string(PP.getSepia()) + " FG: " + to_string(PP.getFilmgrain()) << endl;
+					break;
+			}
+		}
+	}
+
+	// REPEATED KEYPRESS FUNCTIONALITY
+	if (action == GLFW_REPEAT) {
+		if (renderMenu) {
+			switch (key)
+			{
+				case GLFW_KEY_LEFT:
+					switch (PP.getActiveMenuItem()) // DECREASE EFFECT
+					{// depending on the value, set different constraints
+						case 0: if (PP.getBrightness() > -1.0f) { PP.setBrightness(PP.getBrightness() - scale); } break; //brightness MIN value
+						case 1: if (PP.getSaturation() > 0.00f) { PP.setSaturation(PP.getSaturation() - scale * 2); } break; //saturation MIN value
+						case 2: if (PP.getChromaticAbberation() > 0.0f) { PP.setChromaticAbberation(PP.getChromaticAbberation() - CAscale); } break; //chromatic abberation MIN value
+						case 4: if (PP.getFilmgrain() > 0.0f) { PP.setFilmgrain(PP.getFilmgrain() - scale * 5); } break; //filmgrain MIN value
+					}
+					cout << "Br: " + to_string(PP.getBrightness()) + " Sat: " + to_string(PP.getSaturation()) + " CA: " + to_string(PP.getChromaticAbberation()) + " Sep: " + to_string(PP.getSepia()) + " FG: " + to_string(PP.getFilmgrain()) << endl;
+					break;
+				case GLFW_KEY_RIGHT:
+					switch (PP.getActiveMenuItem()) // INCREASE EFFECT
+					{// depending on the value, set different constraints
+						case 0: if (PP.getBrightness() < 1.0f) { PP.setBrightness(PP.getBrightness() + scale); } break; //brightness MAX value
+						case 1: if (PP.getSaturation() < 3.0f) { PP.setSaturation(PP.getSaturation() + scale); } break; //saturation MAX value
+						case 2: if (PP.getChromaticAbberation() < 0.004f) { PP.setChromaticAbberation(PP.getChromaticAbberation() + CAscale); } break; //chromatic abberation MAX value
+						case 4: if (PP.getFilmgrain() < 8.0f) { PP.setFilmgrain(PP.getFilmgrain() + scale * 5); } break; //filmgrain MAX value
+					}
+					cout << "Br: " + to_string(PP.getBrightness()) + " Sat: " + to_string(PP.getSaturation()) + " CA: " + to_string(PP.getChromaticAbberation()) + " Sep: " + to_string(PP.getSepia()) + " FG: " + to_string(PP.getFilmgrain()) << endl;
+					break;
+			}
+		}
+	}
+}
+//RENDERS
 bool renderSkybox()
 {// Renders skybox
 
-	// Disable depth test, depth mask, face culling
+ // Disable depth test, depth mask, face culling
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
-
 	// Bind skybox effect
-	renderer::bind(sky_eff);
+	renderer::bind(effects["sky_eff"]);
 
 	// Calculate MVP for the skybox
 	auto MVP = getMVP(meshes["skybox"].get_transform().get_transform_matrix());
 	// Set MVP matrix uniform
-	glUniformMatrix4fv(sky_eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["sky_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
 	// Set cubemap uniform
 	renderer::bind(cube_map, 0);
-	glUniform1i(sky_eff.get_uniform_location("cubemap"), 0);
+	glUniform1i(effects["sky_eff"].get_uniform_location("cubemap"), 0);
 
 	// Render skybox
 	renderer::render(meshes["skybox"]);
@@ -162,61 +281,6 @@ bool renderSkybox()
 	glDepthMask(GL_TRUE);
 	glEnable(GL_CULL_FACE);
 
-	return true;
-}
-bool renderWithNormalMap(pair<string, mesh> e, mat4 MVP, mat4 LightProjectionMat)
-{
-	// Get mesh object
-	auto m = e.second;
-	// Bind normal_effect
-	renderer::bind(normal_eff);
-	// Set MVP matrix uniform
-	glUniformMatrix4fv(normal_eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
-	// Set M matrix uniform
-	glUniformMatrix4fv(normal_eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
-	// Set N matrix uniform
-	glUniformMatrix3fv(normal_eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
-	// Bind material
-	renderer::bind(m.get_material(), "mat");
-	// Bind light
-	//renderer::bind(light, "light");
-	// Bind point lights
-	renderer::bind(points, "points");
-	// Bind spot lights
-	renderer::bind(spots, "spots");
-	// Bind texture
-	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
-	if (textures.count(e.first) == 0)
-	{// Bind default
-		renderer::bind(textures["unTextured"], 0);
-	}
-	else
-	{// Bind corresponding texture
-		renderer::bind(textures[e.first], 0);
-	}
-	// Set the texture value for the shader here
-	glUniform1i(normal_eff.get_uniform_location("tex"), 0);
-	// Bind normal_map
-	renderer::bind(normal_maps[e.first], 1);
-	// Set normal_map uniform
-	glUniform1i(normal_eff.get_uniform_location("normal_map"), 1);
-	// Set eye position - Get this from active camera
-	glUniform3fv(normal_eff.get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
-
-		//SHADOW
-		// viewmatrix from the shadow map
-		auto viewMatrix = shadow.get_view();
-		// Multiply together with LightProjectionMat
-		LightProjectionMat = LightProjectionMat * viewMatrix * m.get_transform().get_transform_matrix();
-		// Set uniform
-		glUniformMatrix4fv(normal_eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
-		// Bind shadow map texture - use texture unit 2
-		renderer::bind(shadow.buffer->get_depth(), 2);
-		// Set the shadow_map uniform
-		glUniform1i(normal_eff.get_uniform_location("shadow_map"), 2);
-
-	// Render geometry
-	renderer::render(m);
 	return true;
 }
 bool renderShadowMap(mat4 LightProjectionMat)
@@ -229,55 +293,234 @@ bool renderShadowMap(mat4 LightProjectionMat)
 	glCullFace(GL_FRONT);
 
 	// Bind shader
-	renderer::bind(shadow_eff);
+	renderer::bind(effects["shadow_eff"]);
+
 	// Render meshes
 	for (auto &e : meshes) {
-		auto m = e.second;
-		// Create MVP matrix
-		auto M = m.get_transform().get_transform_matrix();
+		auto mesh = e.second;
+		auto meshName = e.first;
 
-		// View matrix taken from shadow map
-		auto V = shadow.get_view();
+		if (meshName == "gate") { // only render the gate
 
-		auto MVP = LightProjectionMat * V * M;
-		// Set MVP matrix uniform
-		glUniformMatrix4fv(shadow_eff.get_uniform_location("MVP"), // Location of uniform
-			1,                                      // Number of values - 1 mat4
-			GL_FALSE,                               // Transpose the matrix?
-			value_ptr(MVP));                        // Pointer to matrix data
-													
-		// Render mesh
-		renderer::render(m);
+			// Create MVP matrix
+			auto M = mesh.get_transform().get_transform_matrix();
+
+			// View matrix taken from shadow map
+			auto V = shadow.get_view();
+
+			auto MVP = LightProjectionMat * V * M;
+			// Set MVP matrix uniform
+			glUniformMatrix4fv(effects["shadow_eff"].get_uniform_location("MVP"), // Location of uniform
+				1,                                      // Number of values - 1 mat4
+				GL_FALSE,                               // Transpose the matrix?
+				value_ptr(MVP));                        // Pointer to matrix data
+
+														// Render mesh
+			renderer::render(mesh);
+		}
 	}
 
 	// Set render target back to the screen
-	renderer::set_render_target();
+	renderer::set_render_target(scene);
 	// Set face cull mode to back
 	glCullFace(GL_BACK);
 
 	return true;
 }
-void movePlanets(float delta_time)
+bool renderStandard(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
 {
-	meshes["planet1"].get_transform().rotate(vec3(0, quarter_pi<float>() * delta_time / 2, 0));
-	radius += 0.03f; // this affects the radius (very sensitive)
-	x = sinf(radius) / 10; // division affects the speed
-	z = cosf(radius) / 10;
+	// Bind effect
+	renderer::bind(effects["main_eff"]);
+	// Set MVP / M / N matrix uniform
+	glUniformMatrix4fv(effects["main_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["main_eff"].get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
+	glUniformMatrix3fv(effects["main_eff"].get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
 
-	meshes["planet2"].get_transform().translate(vec3(x, 0, z));
-	meshes["planet2"].get_transform().rotate(vec3(0, 0, quarter_pi<float>() * delta_time));
-	meshes["planet3"].get_transform().translate(vec3(0, x * 0.4f, 0)); //add sine wave to Y axes
-	meshes["planet6"].get_transform().translate(vec3(-x * 0.6f, 0, z * 0.6f)); // reverse direction
-	meshes["planet6"].get_transform().rotate(vec3(0, 0, half_pi<float>() * delta_time));
-	meshes["planet7"].get_transform().translate(vec3(x * 0.2f, 0, z * 0.2f)); //add sine wave to all axes
-	spots[1].set_position(meshes["planet2"].get_transform().position);
-	spots[2].set_position(meshes["planet3"].get_transform().position + meshes["planet2"].get_transform().position + vec3(0.5f, 0, -1));
-	spots[3].set_position(meshes["planet6"].get_transform().position);
+	// Bind material / directional, spot, point lights / texture / shadowmap
+	renderer::bind(m.get_material(), "mat");
+	renderer::bind(light, "light");
+	renderer::bind(points, "points");
+	renderer::bind(spots, "spots");
+	renderer::bind(shadow.buffer->get_depth(), 2);
+	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
+	if (textures.count(meshName) == 0)
+	{// Bind default
+		renderer::bind(textures["unTextured"], 0);
+	}
+	else
+	{// Bind corresponding texture
+		renderer::bind(textures[meshName], 0);
+	}
+
+	// Set the texture value / eye position / lightMVP for shadow / shadowmap
+	glUniform1i(effects["main_eff"].get_uniform_location("tex"), 0);
+	glUniform3fv(effects["main_eff"].get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+	glUniformMatrix4fv(effects["main_eff"].get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(lightMVP));
+	glUniform1i(effects["main_eff"].get_uniform_location("shadowMap"), 2);
+
+	return true;
+}
+bool renderNormalMap(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
+{
+	// Bind effect
+	renderer::bind(effects["normal_eff"]);
+	// Set MVP / M / N matrix uniform
+	glUniformMatrix4fv(effects["normal_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["normal_eff"].get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
+	glUniformMatrix3fv(effects["normal_eff"].get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
+
+	// Bind material / directional, spot, point lights / texture / shadowmap
+	renderer::bind(m.get_material(), "mat");
+	renderer::bind(light, "light");
+	renderer::bind(points, "points");
+	renderer::bind(spots, "spots");
+	renderer::bind(normal_maps[meshName], 1);
+	renderer::bind(shadow.buffer->get_depth(), 2);
+	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
+	if (textures.count(meshName) == 0)
+	{// Bind default
+		renderer::bind(textures["unTextured"], 0);
+	}
+	else
+	{// Bind corresponding texture
+		renderer::bind(textures[meshName], 0);
+	}
+
+	// Set the texture value / eye position / lightMVP for shadow / shadowmap
+	glUniform1i(effects["normal_eff"].get_uniform_location("tex"), 0);
+	glUniform3fv(effects["normal_eff"].get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+	glUniformMatrix4fv(effects["normal_eff"].get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(lightMVP));
+	glUniform1i(effects["normal_eff"].get_uniform_location("normalMap"), 1);
+	glUniform1i(effects["normal_eff"].get_uniform_location("shadowMap"), 2);
+
+	return true;
+}
+bool renderReflection(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
+{
+	// Bind effect
+	renderer::bind(effects["reflection_eff"]);
+	// Set MVP / M / N matrix uniform
+	glUniformMatrix4fv(effects["reflection_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["reflection_eff"].get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
+	glUniformMatrix3fv(effects["reflection_eff"].get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
+
+	// Bind material / directional, spot, point lights / texture / shadowmap
+	renderer::bind(m.get_material(), "mat");
+	renderer::bind(light, "light");
+	renderer::bind(points, "points");
+	renderer::bind(spots, "spots");
+	renderer::bind(shadow.buffer->get_depth(), 2);
+	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
+	if (textures.count(meshName) == 0)
+	{// Bind default
+		renderer::bind(textures["unTextured"], 0);
+	}
+	else
+	{// Bind corresponding texture
+		renderer::bind(textures[meshName], 0);
+	}
+
+	// Set the texture value / eye position / lightMVP for shadow / shadowmap
+	glUniform1i(effects["reflection_eff"].get_uniform_location("tex"), 0);
+	glUniform3fv(effects["reflection_eff"].get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+	glUniformMatrix4fv(effects["reflection_eff"].get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(lightMVP));
+	glUniform1i(effects["reflection_eff"].get_uniform_location("shadowMap"), 2);
+	// Set reflection / refraction values for corresponding mesh
+	glUniform1f(effects["reflection_eff"].get_uniform_location("reflectionAmount"), RenderTypes[meshName].getReflectionAmount());
+	glUniform1f(effects["reflection_eff"].get_uniform_location("refractionAmount"), RenderTypes[meshName].getRefractionAmount());
+
+	// Set different cubemap for refraction effect
+	if (meshName == "statue" || meshName == "lightBall")
+	{
+		renderer::bind(cube_map2, 3);
+		glUniform1i(effects["reflection_eff"].get_uniform_location("cubeMap"), 3);
+	}
+
+	return true;
+}
+bool renderFresnel(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
+{
+	// Bind effect
+	renderer::bind(effects["fresnel_eff"]);
+	// Set MVP / M / N matrix uniform
+	glUniformMatrix4fv(effects["fresnel_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["fresnel_eff"].get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
+	glUniformMatrix3fv(effects["fresnel_eff"].get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
+
+	// Bind material / directional, spot, point lights / texture / shadowmap
+	renderer::bind(m.get_material(), "mat");
+	renderer::bind(light, "light");
+	renderer::bind(points, "points");
+	renderer::bind(spots, "spots");
+	renderer::bind(shadow.buffer->get_depth(), 2);
+	renderer::bind(cube_map2, 3);
+	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
+	if (textures.count(meshName) == 0)
+	{// Bind default
+		renderer::bind(textures["unTextured"], 0);
+	}
+	else
+	{// Bind corresponding texture
+		renderer::bind(textures[meshName], 0);
+	}
+
+	// Set the texture value / eye position / lightMVP for shadow / shadowmap
+	glUniform1i(effects["fresnel_eff"].get_uniform_location("tex"), 0);
+	glUniform3fv(effects["fresnel_eff"].get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+	glUniformMatrix4fv(effects["fresnel_eff"].get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(lightMVP));
+	glUniform1i(effects["fresnel_eff"].get_uniform_location("shadowMap"), 2);
+	glUniform1i(effects["reflection_eff"].get_uniform_location("cubeMap"), 3);
+	// Set fresnel intensity for corresponding mesh
+	glUniform1f(effects["reflection_eff"].get_uniform_location("fresnelIntensity"), RenderTypes[meshName].getFresnelIntensity()); // currently not being used
+
+	return true;
+}
+bool renderNormalMapAndReflection(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
+{
+	// Bind effect
+	renderer::bind(effects["normal-reflection_eff"]);
+	// Set MVP / M / N matrix uniform
+	glUniformMatrix4fv(effects["normal-reflection_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+	glUniformMatrix4fv(effects["normal-reflection_eff"].get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
+	glUniformMatrix3fv(effects["normal-reflection_eff"].get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
+
+	// Bind material / directional, spot, point lights / texture / shadowmap
+	renderer::bind(m.get_material(), "mat");
+	renderer::bind(light, "light");
+	renderer::bind(points, "points");
+	renderer::bind(spots, "spots");
+	renderer::bind(normal_maps[meshName], 1);
+	renderer::bind(shadow.buffer->get_depth(), 2);
+	renderer::bind(cube_map2, 3);
+	// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
+	if (textures.count(meshName) == 0)
+	{// Bind default
+		renderer::bind(textures["unTextured"], 0);
+	}
+	else
+	{// Bind corresponding texture
+		renderer::bind(textures[meshName], 0);
+	}
+
+	// Set the texture value / eye position / lightMVP for shadow / shadowmap
+	glUniform1i(effects["normal-reflection_eff"].get_uniform_location("tex"), 0);
+	glUniform3fv(effects["normal-reflection_eff"].get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
+	glUniformMatrix4fv(effects["normal-reflection_eff"].get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(lightMVP));
+	glUniform1i(effects["normal-reflection_eff"].get_uniform_location("normalMap"), 1);
+	glUniform1i(effects["normal-reflection_eff"].get_uniform_location("shadowMap"), 2);
+	glUniform1i(effects["normal-reflection_eff"].get_uniform_location("cubeMap"), 3);
+	// Set reflection / refraction values for corresponding mesh
+	glUniform1f(effects["normal-reflection_eff"].get_uniform_location("reflectionAmount"), RenderTypes[meshName].getReflectionAmount());
+	glUniform1f(effects["normal-reflection_eff"].get_uniform_location("refractionAmount"), RenderTypes[meshName].getRefractionAmount());
+
+	return true;
 }
 #pragma endregion
 
 #pragma region Main functions
 bool load_content() {
+// Frame buffer to render to
+	scene = frame_buffer(renderer::get_screen_width(), renderer::get_screen_height());
 // MESHES
 	// Sphere to test location of lights
 	//meshes["locationTest"] = mesh(geometry_builder::create_sphere(10, 10));
@@ -287,18 +530,18 @@ bool load_content() {
 	// Create meshes
 	meshes["skybox"] = mesh(geometry_builder::create_box());
 	meshes["grass"] = mesh(geometry_builder::create_plane());
-	//meshes["statue"] = mesh(geometry("coursework/statue.obj"));
-	meshes["gate"] = mesh(geometry("coursework/gate.obj"));
+	//meshes["statue"] = mesh(geometry("the_garden/statue.obj"));
+	meshes["gate"] = mesh(geometry("the_garden/gate.obj"));
 	meshes["gate2"] = meshes["gate"];
 	meshes["water"] = mesh(geometry_builder::create_disk(10));
-	meshes["fountain"] = mesh(geometry_builder::create_torus(45, 6, 0.5f, 6.0f));
+	meshes["pool"] = mesh(geometry_builder::create_torus(45, 6, 0.5f, 6.0f));
 	meshes["hedge"] = mesh(geometry_builder::create_box());
 	meshes["hedge2"] = mesh(geometry_builder::create_box());
 	meshes["hedge3"] = mesh(geometry_builder::create_box());
 	meshes["hedge4"] = mesh(geometry_builder::create_box());
-	meshes["lampp"] = mesh(geometry("coursework/lamp_post.obj"));
+	meshes["lampp"] = mesh(geometry("the_garden/lamp_post.obj"));
 	meshes["lampp2"] = meshes["lampp"];
-	meshes["bench"] = mesh(geometry("coursework/bench.obj"));
+	meshes["bench"] = mesh(geometry("the_garden/bench.obj"));
 	meshes["planet1"] = mesh(geometry_builder::create_sphere(25, 25));
 	meshes["planet2"] = mesh(geometry_builder::create_sphere(20, 20));
 	meshes["planet3"] = mesh(geometry_builder::create_sphere(20, 20));
@@ -306,6 +549,7 @@ bool load_content() {
 	meshes["planet5"] = mesh(geometry_builder::create_sphere(20, 20));
 	meshes["planet6"] = mesh(geometry_builder::create_sphere(20, 20));
 	meshes["planet7"] = mesh(geometry_builder::create_sphere(20, 20));
+	meshes["lightBall"] = meshes["lightBall"] = mesh(geometry_builder::create_sphere(10, 10));
 	// Transform objects
 	meshes["skybox"].get_transform().scale = vec3(500);
 	meshes["grass"].get_transform().scale = vec3(0.6f);
@@ -317,17 +561,17 @@ bool load_content() {
 	meshes["gate2"].get_transform().translate(vec3(12, 2, 17));
 	meshes["water"].get_transform().scale = vec3(12, 1, 12);
 	meshes["water"].get_transform().translate(vec3(0, 0.5f, 7));
-	meshes["fountain"].get_transform().translate(vec3(0, 0.2f, 7));
+	meshes["pool"].get_transform().translate(vec3(0, 0.2f, 7));
 	meshes["hedge"].get_transform().scale = vec3(25, 5, 1);
 	meshes["hedge"].get_transform().translate(vec3(0, 2, -8));
 	meshes["hedge2"].get_transform().scale = vec3(22, 5, 1);
 	meshes["hedge2"].get_transform().translate(vec3(-12, 2, 8.5f));
 	meshes["hedge2"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
-	meshes["hedge2"].get_transform().rotate(vec3(0, half_pi<float>(), 0)); //my laptop doesn't rotate unless its duplicated
+	meshes["hedge2"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
 	meshes["hedge3"].get_transform().scale = vec3(22, 5, 1);
 	meshes["hedge3"].get_transform().translate(vec3(12, 2, 3.5));
 	meshes["hedge3"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
-	meshes["hedge3"].get_transform().rotate(vec3(0, half_pi<float>(), 0)); //my laptop doesn't rotate unless its duplicated
+	meshes["hedge3"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
 	meshes["hedge4"].get_transform().scale = vec3(25, 5, 1);
 	meshes["hedge4"].get_transform().translate(vec3(0, 2, 20));
 	meshes["lampp"].get_transform().scale = vec3(0.35);
@@ -335,11 +579,11 @@ bool load_content() {
 	meshes["lampp2"].get_transform().scale = vec3(0.35);
 	meshes["lampp2"].get_transform().translate(vec3(3, 0, 18));
 	meshes["lampp2"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
-	meshes["lampp2"].get_transform().rotate(vec3(0, half_pi<float>(), 0)); //my laptop doesn't rotate unless its duplicated
+	meshes["lampp2"].get_transform().rotate(vec3(0, half_pi<float>(), 0));
 	meshes["bench"].get_transform().scale = vec3(0.02);
 	meshes["bench"].get_transform().translate(vec3(0, 0, 18));
 	meshes["bench"].get_transform().rotate(vec3(0, pi<float>(), 0));
-	meshes["bench"].get_transform().rotate(vec3(0, pi<float>(), 0)); //my laptop doesn't rotate unless its duplicated
+	meshes["bench"].get_transform().rotate(vec3(0, pi<float>(), 0));
 	meshes["planet1"].get_transform().scale = vec3(0.6f);
 	meshes["planet1"].get_transform().translate(vec3(0, 1.5f, 7));
 	meshes["planet2"].get_transform().scale = vec3(0.3f);
@@ -354,21 +598,39 @@ bool load_content() {
 	meshes["planet6"].get_transform().translate(vec3(2.5f, 1.2f, 7.5f));
 	meshes["planet7"].get_transform().scale = vec3(0.9f);
 	meshes["planet7"].get_transform().translate(vec3(0, 2, 0));
+	meshes["lightBall"].get_transform().scale = vec3(0.1f);
+
+// GEOMETRY
+	// Geometry for the post processing effects to render to
+	screen.set_type(GL_TRIANGLE_STRIP);
+	vector<vec3> screen_positions{ vec3(-1.0f, -1.0f, 0.0f), vec3(1.0f, -1.0f, 0.0f), vec3(-1.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f) };
+	vector<vec2> screen_tex_coords{ vec2(0.0, 0.0), vec2(1.0f, 0.0f), vec2(0.0f, 1.0f), vec2(1.0f, 1.0f) };
+
+	screen.add_buffer(screen_positions, BUFFER_INDEXES::POSITION_BUFFER);
+	screen.add_buffer(screen_tex_coords, BUFFER_INDEXES::TEXTURE_COORDS_0);
+
+	// Geometry for the menu
+	menu_geom.set_type(GL_TRIANGLE_STRIP);
+	vector<vec3> menu_positions{ vec3(-1.0f, -1.0f, -1.0f), vec3(-0.8f, -1.0f, -1.0f), vec3(-1.0f, -0.3f, -1.0f), vec3(-0.8f, -0.3f, -1.0f) }; //-1 on Z so its in "front" of post process quad
+	vector<vec2> menu_tex_coords{ vec2(0.0, 0.0), vec2(1.0f, 0.0f), vec2(0.0f, 1.0f), vec2(1.0f, 1.0f) };
+
+	menu_geom.add_buffer(menu_positions, BUFFER_INDEXES::POSITION_BUFFER);
+	menu_geom.add_buffer(menu_tex_coords, BUFFER_INDEXES::TEXTURE_COORDS_0);
 
 // LIGHTING
 	// Set materials
 	material mat;
 	mat.set_emissive(vec4(0, 0, 0, 1));
 
-	// Fountain
+	// Pool
 	mat.set_diffuse(vec4(0.6f, 0.6f, 0.6f, 1));
 	mat.set_specular(vec4(1));
 	mat.set_shininess(10.0f);
-	meshes["fountain"].set_material(mat);
+	meshes["pool"].set_material(mat);
 	// Water
-	mat.set_diffuse(vec4(0.5f, 0.5f, 0.5f, 1));
-	mat.set_specular(vec4(0.5f));
-	mat.set_shininess(5);
+	mat.set_diffuse(vec4(0.9f, 0.9f, 0.9f, 1));
+	mat.set_specular(vec4(0));
+	mat.set_shininess(1);
 	meshes["water"].set_material(mat);
 	// Grass
 	mat.set_diffuse(vec4(0.3f, 0.5f, 0.3f, 1));
@@ -388,7 +650,7 @@ bool load_content() {
 	meshes["bench"].set_material(mat);
 	// Gate
 	mat.set_diffuse(vec4(1, 1, 1, 1));
-	mat.set_specular(vec4(1));
+	mat.set_specular(vec4(0));
 	mat.set_shininess(5);
 	meshes["gate"].set_material(mat);
 	meshes["gate2"].set_material(mat);
@@ -414,19 +676,19 @@ bool load_content() {
 	// Planet3
 	mat.set_emissive(vec4(0.15f, 0.05f, 0.05f, 1));
 	mat.set_diffuse(vec4(1, 1, 1, 1));
-	mat.set_specular(vec4(0.5f));
+	mat.set_specular(vec4(0));
 	mat.set_shininess(25.0f);
 	meshes["planet3"].set_material(mat);
 	// Planet4
 	mat.set_emissive(vec4(0.05f, 0.1f, 0.05f, 1));
 	mat.set_diffuse(vec4(1, 0.1f, 0, 1));
-	mat.set_specular(vec4(0.5f));
+	mat.set_specular(vec4(0));
 	mat.set_shininess(5.0f);
 	meshes["planet4"].set_material(mat);
 	// Planet5
 	mat.set_emissive(vec4(.09f, .09f, .09f, 1));
 	mat.set_diffuse(vec4(.5f, .5f, .5f, 1));
-	mat.set_specular(vec4(0.1f));
+	mat.set_specular(vec4(0));
 	mat.set_shininess(5.0f);
 	meshes["planet5"].set_material(mat);
 	// Planet6
@@ -434,15 +696,15 @@ bool load_content() {
 	mat.set_specular(vec4(1));
 	mat.set_shininess(50.0f);
 	meshes["planet6"].set_material(mat);
-	// Planet2
+	// Planet7
 	mat.set_diffuse(vec4(.1f, .5f, .1f, 1));
 	mat.set_specular(vec4(1));
 	mat.set_shininess(25.0f);
 	meshes["planet7"].set_material(mat);
 	// Statue
-	mat.set_diffuse(vec4(0.3f, 0.25f, 0.2f, 1));
+	mat.set_diffuse(vec4(0.1f, 0.1f, 0.1f, 1));
 	mat.set_specular(vec4(0));
-	mat.set_shininess(1);
+	mat.set_shininess(5);
 	//meshes["statue"].set_material(mat);
 	
 	// Set lighting values
@@ -476,93 +738,107 @@ bool load_content() {
 	spots[0].set_light_colour(vec4(0.2f, 0.2f, 1, 1));
 	spots[0].set_direction(normalize(vec3(0, -1, 0)));
 	spots[0].set_range(10.0f);
-	spots[0].set_power(1);
+	spots[0].set_power(20);
 	// Spot 1 - under planet 2
 	spots[1].set_light_colour(vec4(0.6f, 0, 0.8f, 1));
 	spots[1].set_direction(normalize(vec3(0, -1, 0)));
 	spots[1].set_range(5.0f);
-	spots[1].set_power(1);
+	spots[1].set_power(20);
 	// Spot 2 - under planet 3
+	spots[2].set_position(vec3(0, -10, 0));
 	spots[2].set_light_colour(vec4(0.7f, 0, 0, 1));
 	spots[2].set_direction(normalize(vec3(0, -1, 0)));
 	spots[2].set_range(7);
-	spots[2].set_power(1);
-	// Spot 3 - under planet 4
+	spots[2].set_power(20);
+	// Spot 3 - under planet 6
 	spots[3].set_light_colour(vec4(0.4f, 0.4f, 0.4f, 1));
 	spots[3].set_direction(normalize(vec3(0, -1, 0)));
 	spots[3].set_range(5.0f);
-	spots[3].set_power(1);
-	// Spot 4 - above the whole scene
-	spots[4].set_position(vec3(0, 50, 0));
-	spots[4].set_light_colour(vec4(0.7f, 0.7f, 0.8f, 1.0f));
-	spots[4].set_direction(normalize(vec3(0, -1, 0)));
-	spots[4].set_range(80.0f);
-	spots[4].set_power(0.25f);
-
-	// Spot 5 - SHADOW TEST
-	spots[5].set_position(vec3(0, 3, 15));
-	spots[5].set_light_colour(vec4(1.0f, 1.0f, 1.0f, 1.0f));
-	spots[5].set_direction(normalize(vec3(0, 0, 1)));
-	spots[5].set_range(11.0f);
-	spots[5].set_power(10.1f); //////// RAISE THIS
+	spots[3].set_power(20);
+	// Spot 5 - outside the gate
+	spots[4].set_position(meshes["gate"].get_transform().position + vec3(-4, 6, 0));
+	spots[4].set_light_colour(vec4(0.0f, 0.6f, 1.0f, 1.0f));
+	spots[4].set_direction(normalize(vec3(1.01f, -1.01f, 0.0f)));
+	spots[4].set_range(10.0f);
+	spots[4].set_power(10.0f);
 
 	// Directional
-	/*
-	light.set_ambient_intensity(vec4(1, 1, 1, 1.0f));
-	light.set_light_colour(vec4(1, 1, 1, 1));
-	light.set_direction(vec3(-1, -1, -1));
-	*/
+	light.set_ambient_intensity(vec4(0.1f, 0.1f, 0.1f, 1));
+	light.set_light_colour(vec4(0.1f, 0.1f, 0.2f, 1));
+	light.set_direction(vec3(1.0f, -1.0f, 1.0f));
+	
 	// Sphere to test location of lights
-	//meshes["locationTest"].get_transform().position = spots[5].get_position() + vec3(0, 0, -2);
+	//meshes["locationTest"].get_transform().position = spots[4].get_position() + vec3(-1, 0, 0);
 
 // SHADERS
-	// Load in main shaders
-	eff.add_shader("coursework/shader.vert", GL_VERTEX_SHADER);
-	eff.add_shader("coursework/shader.frag", GL_FRAGMENT_SHADER);
-	eff.add_shader("coursework/part_spot.frag", GL_FRAGMENT_SHADER);
-	eff.add_shader("coursework/part_point.frag", GL_FRAGMENT_SHADER);
-	eff.add_shader("coursework/part_shadow.frag", GL_FRAGMENT_SHADER);
-	//eff.add_shader("coursework/part_direction.frag", GL_FRAGMENT_SHADER);
-	// Build effect
-	eff.build();
-	// Load in shaders for normal map
-	normal_eff.add_shader("coursework/normal_shader.vert", GL_VERTEX_SHADER);
-	normal_eff.add_shader("coursework/normal_shader.frag", GL_FRAGMENT_SHADER);
-	normal_eff.add_shader("coursework/part_normal.frag", GL_FRAGMENT_SHADER);
-	normal_eff.add_shader("coursework/part_spot.frag", GL_FRAGMENT_SHADER);
-	normal_eff.add_shader("coursework/part_point.frag", GL_FRAGMENT_SHADER);
-	normal_eff.add_shader("coursework/part_shadow.frag", GL_FRAGMENT_SHADER);
-	//normal_eff.add_shader("coursework/part_direction.frag", GL_FRAGMENT_SHADER);
-	normal_eff.build();
+	// Load in main shaders 
+	effects["main_eff"].add_shader("the_garden/main_shader.vert", GL_VERTEX_SHADER);
+	vector<string> fragment_shaders{"the_garden/main_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
+	effects["main_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
+	effects["main_eff"].build();
+	// Load in normal shaders
+	effects["normal_eff"].add_shader("the_garden/normal_shader.vert", GL_VERTEX_SHADER);
+	fragment_shaders = { "the_garden/normal_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag", "the_garden/part_normal.frag" };
+	effects["normal_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
+	effects["normal_eff"].build();
+	// Load in fresnel shaders 
+	effects["fresnel_eff"].add_shader("the_garden/fresnel_shader.vert", GL_VERTEX_SHADER);
+	fragment_shaders = { "the_garden/fresnel_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
+	effects["fresnel_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
+	effects["fresnel_eff"].build();
+	// Load in reflection shaders 
+	effects["reflection_eff"].add_shader("the_garden/reflection_shader.vert", GL_VERTEX_SHADER);
+	fragment_shaders = { "the_garden/reflection_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag" };
+	effects["reflection_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
+	effects["reflection_eff"].build();
+	// Load in normal-reflection shaders
+	effects["normal-reflection_eff"].add_shader("the_garden/normal-reflection_shader.vert", GL_VERTEX_SHADER);
+	fragment_shaders = { "the_garden/normal-reflection_shader.frag", "the_garden/part_spot.frag", "the_garden/part_point.frag", "the_garden/part_shadow.frag", "the_garden/part_direction.frag", "the_garden/part_normal.frag" };
+	effects["normal-reflection_eff"].add_shader(fragment_shaders, GL_FRAGMENT_SHADER);
+	effects["normal-reflection_eff"].build();
 	// Load in skybox shaders
-	sky_eff.add_shader("coursework/skybox.vert", GL_VERTEX_SHADER);
-	sky_eff.add_shader("coursework/skybox.frag", GL_FRAGMENT_SHADER);
-	sky_eff.build();
+	effects["sky_eff"].add_shader("the_garden/skybox.vert", GL_VERTEX_SHADER);
+	effects["sky_eff"].add_shader("the_garden/skybox.frag", GL_FRAGMENT_SHADER);
+	effects["sky_eff"].build();
 	// Load in shadow shaders
-	shadow_eff.add_shader("coursework/shadow.vert", GL_VERTEX_SHADER);
-	shadow_eff.add_shader("coursework/shadow.frag", GL_FRAGMENT_SHADER);
-	shadow_eff.build();
+	effects["shadow_eff"].add_shader("the_garden/shadow.vert", GL_VERTEX_SHADER);
+	effects["shadow_eff"].add_shader("the_garden/shadow.frag", GL_FRAGMENT_SHADER);
+	effects["shadow_eff"].build();
+	// Load in post process shaders
+	effects["post_process_eff"].add_shader("the_garden/post_process.vert", GL_VERTEX_SHADER);
+	effects["post_process_eff"].add_shader("the_garden/post_process.frag", GL_FRAGMENT_SHADER);
+	effects["post_process_eff"].build();
+	// Load in menu shaders
+	effects["menu_eff"].add_shader("the_garden/menu.vert", GL_VERTEX_SHADER);
+	effects["menu_eff"].add_shader("the_garden/menu.frag", GL_FRAGMENT_SHADER);
+	effects["menu_eff"].build();
 
 // TEXTURES
 	// Load in textures
-	array<string, 6> skybox_tex = { "coursework/miramar_ft.png", "coursework/miramar_bk.png", "coursework/miramar_up.png",
-									"coursework/miramar_dn.png", "coursework/miramar_rt.png", "coursework/miramar_lf.png" };
-	normal_maps["gate"] = texture("coursework/gate_normal.png"); normal_maps["gate2"] = normal_maps["gate"];
-	//normal_maps["statue"] = texture("coursework/statue_normal.jpg");
-	textures["unTextured"] = texture("coursework/checked.gif");
-	textures["grass"] = texture("coursework/grassHD.jpg");
-	textures["water"] = texture("coursework/water.jpg");
-	textures["fountain"] = texture("coursework/marble.jpg");
-	textures["gate"] = texture("coursework/gate.png"); textures["gate2"] = textures["gate"];
-	textures["hedge"] = texture("coursework/hedge.png"); textures["hedge2"] = textures["hedge"]; textures["hedge3"] = textures["hedge"]; textures["hedge4"] = textures["hedge"];
-	textures["lampp"] = texture("coursework/metal.jpg"); textures["lampp2"] = textures["lampp"];
-	textures["bench"] = texture("coursework/wood.jpg");
-	textures["planet1"] = texture("coursework/planet1.jpg"); textures["planet2"] = textures["planet1"]; textures["planet3"] = textures["planet1"];
-																textures["planet4"] = textures["planet1"]; textures["planet7"] = textures["planet1"];
-	textures["planet5"] = texture("coursework/planet2.jpg"); textures["planet6"] = textures["planet5"];
-	//textures["statue"] = texture("coursework/statue_tex.jpg");
+	array<string, 6> skybox_tex = { "the_garden/miramar_ft.png", "the_garden/miramar_bk.png", "the_garden/miramar_up.png", "the_garden/miramar_dn.png", "the_garden/miramar_rt.png", "the_garden/miramar_lf.png" };
+	array<string, 6> skybox2_tex = { "the_garden/miramar_ft.png", "the_garden/miramar_bk.png", "the_garden/miramar_up.png", "the_garden/miramar_rt.png", "the_garden/miramar_rt.png", "the_garden/miramar_lf.png" };
+	normal_maps["gate"] = texture("the_garden/gate_normal.png"); normal_maps["gate2"] = normal_maps["gate"];
+	//normal_maps["statue"] = texture("the_garden/statue_normal.jpg");
+	//textures["statue"] = texture("the_garden/statue_tex.jpg");
+	textures["unTextured"] = texture("the_garden/checked.gif");
+	textures["grass"] = texture("the_garden/grassHD.jpg");
+	textures["water"] = texture("the_garden/water.jpg");
+	textures["pool"] = texture("the_garden/marble.jpg");
+	textures["gate"] = texture("the_garden/gate.png"); textures["gate2"] = textures["gate"];
+	textures["hedge"] = texture("the_garden/hedge.png"); textures["hedge2"] = textures["hedge"]; textures["hedge3"] = textures["hedge"]; textures["hedge4"] = textures["hedge"];
+	textures["lampp"] = texture("the_garden/metal.jpg"); textures["lampp2"] = textures["lampp"];
+	textures["bench"] = texture("the_garden/wood.jpg");
+	textures["planet1"] = texture("the_garden/planet1.jpg"); textures["planet2"] = textures["planet1"]; textures["planet3"] = textures["planet1"]; textures["planet4"] = textures["planet1"]; textures["planet7"] = textures["planet1"];
+	textures["planet5"] = texture("the_garden/planet2.jpg"); textures["planet6"] = textures["planet5"];
 	// Add textures to cubemap
 	cube_map = cubemap(skybox_tex);
+	cube_map2 = cubemap(skybox2_tex); // for statue reflection
+	// Load in menu textures
+	menu_tex[0] = texture("the_garden/menu_brightness.png");	// Brightness
+	menu_tex[1] = texture("the_garden/menu_saturation.png");	// Saturation
+	menu_tex[2] = texture("the_garden/menu_chromaticAbberation.png");	//ChromaticAbberation
+	menu_tex[3] = texture("the_garden/menu_sepia.png");		// Sepia
+	menu_tex[4] = texture("the_garden/menu_filmGrain.png");	// Filmgrain
 // CAMERAS
 	// Set camera properties
 	cam_free.set_position(vec3(0.0f, 5.0f, 10.0f));
@@ -573,6 +849,26 @@ bool load_content() {
 	cam_target_1.set_projection(quarter_pi<float>(), renderer::get_screen_aspect(), 0.1f, 1000.0f);
 	cam_target_2.set_target(meshes["planet1"].get_transform().position);
 	cam_target_2.set_projection(quarter_pi<float>(), renderer::get_screen_aspect(), 0.1f, 1000.0f);
+
+// RENDER TYPES AND EFFECTS - assign render effects to meshes
+	// TYPE -	1 - normal map / 2 - reflection / 3 - fresnel / 4 - reflection and normal map / novalue - texture only
+	// RenderType(type, reflectionAmount, refractionAmount, fresnelIntensity)
+	RenderTypes["statue"] = RenderType(1, 0, 1.0f, 0);
+	RenderTypes["statue"] = RenderType(1, 0, 1.0f, 0);
+	RenderTypes["lightball"] = RenderTypes["statue"];
+	RenderTypes["water"] = RenderType(3, 0, 0.0f, 0); // Fresnel intensity is 0, the effect is modified for aesthetic reasons, edit in shader for the classic effect
+	RenderTypes["gate"] = RenderType(4, 0.2f, 0, 0);
+	RenderTypes["gate2"] = RenderTypes["gate"];
+	RenderTypes["lampp"] = RenderType(2, 0.3f, 0.0f, 0);
+	RenderTypes["lampp2"] = RenderTypes["lampp"];
+	RenderTypes["planet1"] = RenderType(2, 0.4f, 0.2f, 0);
+	RenderTypes["planet2"] = RenderTypes["planet1"];
+	RenderTypes["planet3"] = RenderTypes["planet1"];
+	RenderTypes["planet4"] = RenderTypes["planet1"];
+	RenderTypes["planet5"] = RenderTypes["planet1"];
+	RenderTypes["planet6"] = RenderTypes["planet1"];
+	RenderTypes["planet7"] = RenderTypes["planet1"];
+
 	return true;
 }
 bool update(float delta_time) {
@@ -592,21 +888,17 @@ bool update(float delta_time) {
 		glfwSetInputMode(renderer::get_window(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
-	if (glfwGetKey(renderer::get_window(), GLFW_KEY_LEFT)) {
-		spots[5].move(vec3(2, 0, 0) * delta_time);
-	}
-	if (glfwGetKey(renderer::get_window(), GLFW_KEY_RIGHT)) {
-		spots[5].move(vec3(-2, 0, 0) * delta_time);
-	}
-	if (glfwGetKey(renderer::get_window(), GLFW_KEY_UP)) {
-		spots[5].move(vec3(0, 0, -2) * delta_time);
-	}
-	if (glfwGetKey(renderer::get_window(), GLFW_KEY_DOWN)) {
-		spots[5].move(vec3(0, 0, 2) * delta_time);
-	}
+	// SHADOW
+	// Move spotlight outside the gates
+		//The shadow will clip over the hedge because thats not being rendered on the shadow map
+		//If the hedges were rendered they would obscure too much of the scene, point of this is to have a basic dynamic shadow going.
+	y = sinf(seed) / 8; //using the radius variable from planet movement
+	spots[4].move(vec3(0, 0, y));
 
-	shadow.light_position = spots[5].get_position();
-	shadow.light_dir = spots[5].get_direction();
+	shadow.light_position = spots[4].get_position();
+	shadow.light_dir = spots[4].get_direction();
+
+	meshes["lightBall"].get_transform().position = spots[4].get_position() - vec3(0.5f, 0.0f, 0.0f);
 
 	if (glfwGetKey(renderer::get_window(), 'I') == GLFW_PRESS)
 		shadow.buffer->save("test.png");
@@ -630,28 +922,39 @@ bool update(float delta_time) {
 		break;
 	}
 
+	// Move planets around
 	movePlanets(delta_time);
+
+	// Add time for noise
+	frameTime += delta_time;
 
 	return true;
 }
 bool render() {
+	// Set render target
+	renderer::set_render_target(scene);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
 // SKYBOX
 	renderSkybox();
+
 // SHADOW
 	// Create light proj mat with fov 90
-	mat4 LightProjectionMat = perspective<float>(90.f, renderer::get_screen_aspect(), 0.1f, 1000.f);
+	mat4 LightProjectionMat = perspective<float>(90.0f, renderer::get_screen_aspect(), 0.1f, 1000.0f);
 	renderShadowMap(LightProjectionMat);
 
-// MESHES
-	for (auto &e : meshes) 
+// MESHES LOOP
+	for (auto &e : meshes)
 	{
-		// Get mesh object
-		auto m = e.second;
-		int calculateReflection = 0;
+		// Set Variables for each mesh
+		auto m = e.second; // mesh object
+		auto meshName = e.first;
 		auto MVP = mat4(0);
-		
-		// Transformation inheritance
-		// Each planet has their own transformation but 3 and 7 inherit from other ones
+		auto shadow_viewMatrix = shadow.get_view();
+		auto lightMVP = LightProjectionMat * shadow_viewMatrix * m.get_transform().get_transform_matrix();
+
+		// Apply Transformation Inheritance
+			// Each planet has their own transformation but 3 and 7 inherit from other ones
 		if (e.first == "planet3")
 		{// If planet3 comes, apply planet2's transform
 			MVP = getMVP(m.get_transform().get_transform_matrix() * meshes["planet2"].get_transform().get_transform_matrix());
@@ -660,83 +963,75 @@ bool render() {
 		{// If planet7 comes, apply planet2's and planet3's transform
 			MVP = getMVP(m.get_transform().get_transform_matrix() * meshes["planet2"].get_transform().get_transform_matrix() * meshes["planet3"].get_transform().get_transform_matrix());
 		}
-		else 
-		{// Create MVP matrix
+		else {// Create MVP matrix
 			MVP = getMVP(m.get_transform().get_transform_matrix());
 		}
 
-		
-		if (normal_maps.count(e.first) == 1)
-		{//if the mesh has a normal map, render it
-			renderWithNormalMap(e, MVP, LightProjectionMat);
+	// SWITCH ON RENDER TYPE
+		switch (RenderTypes[meshName].getRenderType())
+		{
+			case 1: renderNormalMap(meshName, m, MVP, lightMVP);
+				break;
+			case 2: renderReflection(meshName, m, MVP, lightMVP);
+				break;
+			case 3: renderFresnel(meshName, m, MVP, lightMVP);
+				break;
+			case 4: renderNormalMapAndReflection(meshName, m, MVP, lightMVP);
+				break;
+			default: renderStandard(meshName, m, MVP, lightMVP);
+				break;
 		}
-		else
-		{//render without normal map
-			// Bind effect
-			renderer::bind(eff);
-			// Set MVP matrix uniform
-			glUniformMatrix4fv(eff.get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
-			// Set M matrix uniform
-			glUniformMatrix4fv(eff.get_uniform_location("M"), 1, GL_FALSE, value_ptr(m.get_transform().get_transform_matrix()));
-			// Set N matrix uniform
-			glUniformMatrix3fv(eff.get_uniform_location("N"), 1, GL_FALSE, value_ptr(m.get_transform().get_normal_matrix()));
-			// Bind material
-			renderer::bind(m.get_material(), "mat");
-			// Bind light
-			//renderer::bind(light, "light");
-			// Bind point lights
-			renderer::bind(points, "points");
-			// Bind spot lights
-			renderer::bind(spots, "spots");
-			// Bind texture
-			// If 'textures' does not have a key with the same name as the mesh, then the mesh doesn't have a texture defined, bind default
-			if (textures.count(e.first) == 0)
-			{// Bind default
-				renderer::bind(textures["unTextured"], 0);
-			}
-			else
-			{// Bind corresponding texture
-				renderer::bind(textures[e.first], 0);
-			}
-			// Set the texture value for the shader here
-			glUniform1i(eff.get_uniform_location("tex"), 0);
-			// Set eye position - Get this from active camera
-			glUniform3fv(eff.get_uniform_location("eye_pos"), 1, value_ptr(getEyePos()));
 
-			glUniform1i(eff.get_uniform_location("calculateReflection"), calculateReflection);
-
-				//SHADOW
-				// viewmatrix from the shadow map
-				auto viewMatrix = shadow.get_view();
-				// Multiply together with LightProjectionMat
-				LightProjectionMat = LightProjectionMat * viewMatrix * m.get_transform().get_transform_matrix();
-				// Set uniform
-				glUniformMatrix4fv(eff.get_uniform_location("lightMVP"), 1, GL_FALSE, value_ptr(LightProjectionMat));
-				// Bind shadow map texture - use texture unit 1
-				renderer::bind(shadow.buffer->get_depth(), 1);
-				// Set the shadow_map uniform
-				glUniform1i(eff.get_uniform_location("shadow_map"), 1);
-
-				if (e.first == "water") {
-					calculateReflection = 1;
-					//REFLECTION
-					renderer::bind(cube_map, 2);
-					glUniform1i(eff.get_uniform_location("cubemap"), 2);
-					glUniform1i(eff.get_uniform_location("calculateReflection"), calculateReflection);
-				}
-
-			// Render geometry
-			renderer::render(m);
-		}
+		// Render geometry
+		renderer::render(m);
 	}
+
+// POST PROCESSING
+	// Set render target
+	renderer::set_render_target();
+	// Bind effect
+	renderer::bind(effects["post_process_eff"]);
+
+	auto MVP = mat4(1.0f);
+	glUniformMatrix4fv(effects["post_process_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+
+	// Bind frame
+	renderer::bind(scene.get_frame(), 0);
+	glUniform1i(effects["post_process_eff"].get_uniform_location("tex"), 0);
+
+	// Set Uniforms
+	glUniform1f(effects["post_process_eff"].get_uniform_location("brightness"), PP.getBrightness());
+	glUniform1f(effects["post_process_eff"].get_uniform_location("saturation"), PP.getSaturation());
+	glUniform1f(effects["post_process_eff"].get_uniform_location("chromaticAbberation"), PP.getChromaticAbberation());
+	glUniform1i(effects["post_process_eff"].get_uniform_location("sepia"), PP.getSepia());
+	glUniform1f(effects["post_process_eff"].get_uniform_location("noiseStrength"), PP.getFilmgrain());
+	glUniform1f(effects["post_process_eff"].get_uniform_location("frameTime"), frameTime);
+
+	renderer::render(screen);
+
+// MENU
+	if (renderMenu) {
+		// Bind effect
+		renderer::bind(effects["menu_eff"]);
+
+		glUniformMatrix4fv(effects["menu_eff"].get_uniform_location("MVP"), 1, GL_FALSE, value_ptr(MVP));
+
+		// Bind texture
+		renderer::bind(menu_tex[PP.getActiveMenuItem()], 0);
+		glUniform1i(effects["menu_eff"].get_uniform_location("tex"), 0);
+
+		renderer::render(menu_geom);
+	}
+
 	return true;
 }
 void main() {
 	// Create application
-	app application("Graphics Coursework");
+	app application("The_Garden");
 	// Set load content, update and render methods
 	application.set_load_content(load_content);
 	application.set_initialise(cam_free_initialize);
+	application.set_keyboard_callback(key_callback); // keyboard callback
 	application.set_update(update);
 	application.set_render(render);
 	// Run application
