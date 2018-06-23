@@ -429,13 +429,6 @@ bool renderReflection(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
 	glUniform1f(effects["reflection_eff"].get_uniform_location("reflectionAmount"), RenderTypes[meshName].getReflectionAmount());
 	glUniform1f(effects["reflection_eff"].get_uniform_location("refractionAmount"), RenderTypes[meshName].getRefractionAmount());
 
-	// Set different cubemap for refraction effect
-	if (meshName == "statue" || meshName == "lightBall")
-	{
-		renderer::bind(cube_map2, 3);
-		glUniform1i(effects["reflection_eff"].get_uniform_location("cubeMap"), 3);
-	}
-
 	return true;
 }
 bool renderFresnel(string meshName, mesh m, mat4 MVP, mat4 lightMVP)
@@ -512,6 +505,13 @@ bool renderNormalMapAndReflection(string meshName, mesh m, mat4 MVP, mat4 lightM
 	// Set reflection / refraction values for corresponding mesh
 	glUniform1f(effects["normal-reflection_eff"].get_uniform_location("reflectionAmount"), RenderTypes[meshName].getReflectionAmount());
 	glUniform1f(effects["normal-reflection_eff"].get_uniform_location("refractionAmount"), RenderTypes[meshName].getRefractionAmount());
+
+	// Set different cubemap for refraction effect
+	if (meshName == "statue")
+	{
+		renderer::bind(cube_map2, 3);
+		glUniform1i(effects["normal-reflection_eff"].get_uniform_location("cubeMap"), 3);
+	}
 
 	return true;
 }
@@ -853,9 +853,9 @@ bool load_content() {
 // RENDER TYPES AND EFFECTS - assign render effects to meshes
 	// TYPE -	1 - normal map / 2 - reflection / 3 - fresnel / 4 - reflection and normal map / novalue - texture only
 	// RenderType(type, reflectionAmount, refractionAmount, fresnelIntensity)
-	RenderTypes["statue"] = RenderType(1, 0, 1.0f, 0);
-	RenderTypes["statue"] = RenderType(1, 0, 1.0f, 0);
-	RenderTypes["lightball"] = RenderTypes["statue"];
+	RenderTypes["statue"] = RenderType(4, 0, 1.0f, 0);
+	RenderTypes["statue"] = RenderType(4, 0, 1.0f, 0);
+	RenderTypes["lightBall"] = RenderType(2, 0, 1.0f, 0);
 	RenderTypes["water"] = RenderType(3, 0, 0.0f, 0); // Fresnel intensity is 0, the effect is modified for aesthetic reasons, edit in shader for the classic effect
 	RenderTypes["gate"] = RenderType(4, 0.2f, 0, 0);
 	RenderTypes["gate2"] = RenderTypes["gate"];
